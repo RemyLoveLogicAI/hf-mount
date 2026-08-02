@@ -1,0 +1,115 @@
+[Unit]
+Description=hf-mount daemon (instance %i) for Hugging Face model storage
+Documentation=https://github.com/huggingface/hf-mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+
+# Per-instance environment file.
+# Create one file per mount instance at:
+#   /etc/hf-mount/instances/<instance>.env
+#
+# Example /etc/hf-mount/instances/gpt2.env:
+#
+#   HF_MOUNT_BACKEND=nfs
+#   HF_MOUNT_SOURCE_TYPE=repo
+#   HF_MOUNT_SOURCE_ID=openai/gpt2
+#   HF_MOUNT_POINT=/mnt/hf-mount/gpt2
+#   HF_MOUNT_REVISION=main
+#   HF_MOUNT_TOKEN_FILE=/etc/hf-mount/token
+#   HF_MOUNT_CACHE_DIR=/var/cache/hf-mount/gpt2
+#   HF_MOUNT_CACHE_SIZE=10000000000
+#   HF_MOUNT_METADATA_TTL_MS=10000
+#   HF_MOUNT_POLL_INTERVAL_SECS=30
+#   HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS=45000
+#   HF_MOUNT_READ_ONLY=false
+#   HF_MOUNT_ADVANCED_WRITES=false
+#   HF_MOUNT_OVERLAY=false
+#   HF_MOUNT_MAX_THREADS=16
+#   HF_MOUNT_DIRECT_IO=false
+#   HF_MOUNT_NO_DISK_CACHE=false
+#   HF_MOUNT_CACHE_MODE=chunk
+#   HF_MOUNT_UID=
+#   HF_MOUNT_GID=
+#   HF_MOUNT_POLL_LISTING_CONCURRENCY=4
+#   HF_MOUNT_INODE_SOFT_LIMIT=0
+#   HF_MOUNT_LRU_SWEEP_INTERVAL_MS=5000
+#   HF_MOUNT_FLUSH_DEBOUNCE_MS=2000
+#   HF_MOUNT_FLUSH_MAX_BATCH_WINDOW_MS=30000
+#   HF_MOUNT_READ_FETCH_TIMEOUT_MS=30000
+#   HF_MOUNT_HUB_ENDPOINT=https://huggingface.co
+#   HF_MOUNT_NO_FILTER_OS_FILES=false
+#   HF_MOUNT_FUSE_OWNER_ONLY=false
+#
+# To switch between FUSE and NFS backends, set HF_MOUNT_BACKEND:
+#   HF_MOUNT_BACKEND=nfs   (default, no root required on modern kernels)
+#   HF_MOUNT_BACKEND=fuse  (requires FUSE setup and user_allow_other)
+#
+# To mount a bucket instead of a repo, set:
+#   HF_MOUNT_SOURCE_TYPE=bucket
+#   HF_MOUNT_SOURCE_ID=user/my-bucket
+#
+# Subfolders are encoded in the source ID:
+#   HF_MOUNT_SOURCE_ID=user/model/sub/dir
+#
+# For read-only exports (NFS server mode), set:
+#   HF_MOUNT_READ_ONLY=true
+
+EnvironmentFile=/etc/hf-mount/instances/%i.env
+
+# Create mount point and cache directories on start.
+ExecStartPre=/bin/mkdir -p "${HF_MOUNT_POINT}" "${HF_MOUNT_CACHE_DIR}"
+
+# Run the selected backend directly (systemd manages the process,
+# so we do not use the hf-mount start daemon wrapper).
+#
+# NFS variant (default, no root required on modern kernels):
+#   HF_MOUNT_BACKEND=nfs
+#
+# FUSE variant (requires FUSE setup and user_allow_other):
+#   HF_MOUNT_BACKEND=fuse
+ExecStart=/usr/bin/hf-mount-${HF_MOUNT_BACKEND} \
+    ${HF_MOUNT_SOURCE_TYPE} \
+    ${HF_MOUNT_SOURCE_ID} \
+    ${HF_MOUNT_POINT} \
+    --revision=${HF_MOUNT_REVISION} \
+    --hf-token=${HF_TOKEN} \
+    --token-file=${HF_MOUNT_TOKEN_FILE} \
+    --cache-dir=${HF_MOUNT_CACHE_DIR} \
+    --cache-size=${HF_MOUNT_CACHE_SIZE} \
+    --metadata-ttl-ms=${HF_MOUNT_METADATA_TTL_MS} \
+    --poll-interval-secs=${HF_MOUNT_POLL_INTERVAL_SECS} \
+    --flush-shutdown-timeout-ms=${HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS} \
+    --read-only=${HF_MOUNT_READ_ONLY} \
+    --advanced-writes=${HF_MOUNT_ADVANCED_WRITES} \
+    --overlay=${HF_MOUNT_OVERLAY} \
+    --max-threads=${HF_MOUNT_MAX_THREADS} \
+    --direct-io=${HF_MOUNT_DIRECT_IO} \
+    --no-disk-cache=${HF_MOUNT_NO_DISK_CACHE} \
+    --cache-mode=${HF_MOUNT_CACHE_MODE} \
+    --poll-listing-concurrency=${HF_MOUNT_POLL_LISTING_CONCURRENCY} \
+    --inode-soft-limit=${HF_MOUNT_INODE_SOFT_LIMIT} \
+    --lru-sweep-interval-ms=${HF_MOUNT_LRU_SWEEP_INTERVAL_MS} \
+    --flush-debounce-ms=${HF_MOUNT_FLUSH_DEBOUNCE_MS} \
+    --flush-max-batch-window-ms=${HF_MOUNT_FLUSH_MAX_BATCH_WINDOW_MS} \
+    --read-fetch-timeout-ms=${HF_MOUNT_READ_FETCH_TIMEOUT_MS} \
+    --hub-endpoint=${HF_MOUNT_HUB_ENDPOINT} \
+    --no-filter-os-files=${HF_MOUNT_NO_FILTER_OS_FILES}
+
+# Security hardening.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=${HF_MOUNT_POINT} ${HF_MOUNT_CACHE_DIR}
+
+# Graceful shutdown: allow the flush drain to complete before SIGKILL.
+TimeoutStopSec=60
+KillSignal=SIGTERM
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target
