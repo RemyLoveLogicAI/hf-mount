@@ -17,17 +17,24 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS cook
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --no-default-features \
-    --features fuse,vendored-openssl --recipe-path recipe.json
+    --features fuse,nfs,vendored-openssl --recipe-path recipe.json
 
 # Stage 4 — build the actual binaries; deps come from the cooked cache.
 FROM cook AS builder
 COPY . .
-RUN cargo build --release --no-default-features --features fuse,vendored-openssl \
-    --bin hf-mount-fuse --bin hf-mount-fuse-sidecar
+RUN cargo build --release --no-default-features --features fuse,nfs,vendored-openssl \
+    --bin hf-mount-fuse \
+    --bin hf-mount-fuse-sidecar \
+    --bin hf-mount-nfs
 
 # Runtime
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libfuse3-3 ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libfuse3-3 \
+    nfs-common \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/target/release/hf-mount-fuse /usr/local/bin/
 COPY --from=builder /build/target/release/hf-mount-fuse-sidecar /usr/local/bin/
+COPY --from=builder /build/target/release/hf-mount-nfs /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/hf-mount-fuse"]
