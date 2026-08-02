@@ -6,6 +6,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=hf-mount
+Group=hf-mount
 Restart=on-failure
 RestartSec=5
 
@@ -109,7 +111,6 @@ ReadWritePaths=${HF_MOUNT_POINT} ${HF_MOUNT_CACHE_DIR}
 # Graceful shutdown: allow the flush drain to complete before SIGKILL.
 TimeoutStopSec=60
 KillSignal=SIGTERM
-SendSIGKILL=no
 
 [Install]
 WantedBy=multi-user.target
