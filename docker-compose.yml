@@ -1,0 +1,100 @@
+services:
+  hf-mount-nfs:
+    image: hf-mount:latest
+    container_name: hf-mount-nfs
+    restart: unless-stopped
+    environment:
+      - HF_MOUNT_USE_FUSE=no
+      - HF_MOUNT_SOURCE_TYPE=repo
+      - HF_MOUNT_SOURCE_ID=openai/gpt2
+      - HF_MOUNT_POINT=/mnt/hf-mount
+      - HF_MOUNT_REVISION=main
+      - HF_MOUNT_TOKEN_FILE=/etc/hf-mount/token
+      - HF_MOUNT_CACHE_DIR=/var/cache/hf-mount
+      - HF_MOUNT_CACHE_SIZE=50000000000
+      - HF_MOUNT_METADATA_TTL_MS=5000
+      - HF_MOUNT_POLL_INTERVAL_SECS=10
+      - HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS=120000
+      - HF_MOUNT_READ_ONLY=false
+      - HF_MOUNT_ADVANCED_WRITES=true
+      - HF_MOUNT_OVERLAY=false
+      - HF_MOUNT_MAX_THREADS=16
+      - HF_MOUNT_DIRECT_IO=false
+    volumes:
+      - hf-mount-cache:/var/cache/hf-mount
+      - hf-mount-token:/etc/hf-mount
+      - hf-mount-data:/mnt/hf-mount
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+        reservations:
+          memory: 1G
+          cpus: "1"
+    healthcheck:
+      test: ["CMD", "hf-mount", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  hf-mount-fuse:
+    image: hf-mount:latest
+    container_name: hf-mount-fuse
+    restart: unless-stopped
+    environment:
+      - HF_MOUNT_USE_FUSE=yes
+      - HF_MOUNT_SOURCE_TYPE=repo
+      - HF_MOUNT_SOURCE_ID=openai/gpt2
+      - HF_MOUNT_POINT=/mnt/hf-mount
+      - HF_MOUNT_REVISION=main
+      - HF_MOUNT_TOKEN_FILE=/etc/hf-mount/token
+      - HF_MOUNT_CACHE_DIR=/var/cache/hf-mount
+      - HF_MOUNT_CACHE_SIZE=50000000000
+      - HF_MOUNT_METADATA_TTL_MS=5000
+      - HF_MOUNT_POLL_INTERVAL_SECS=10
+      - HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS=120000
+      - HF_MOUNT_READ_ONLY=false
+      - HF_MOUNT_ADVANCED_WRITES=true
+      - HF_MOUNT_OVERLAY=false
+      - HF_MOUNT_MAX_THREADS=16
+      - HF_MOUNT_DIRECT_IO=false
+    volumes:
+      - hf-mount-cache:/var/cache/hf-mount
+      - hf-mount-token:/etc/hf-mount
+      - hf-mount-data:/mnt/hf-mount
+      - /dev/fuse:/dev/fuse
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2"
+        reservations:
+          memory: 1G
+          cpus: "1"
+    healthcheck:
+      test: ["CMD", "hf-mount", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    privileged: true
+
+volumes:
+  hf-mount-cache:
+    driver: local
+  hf-mount-token:
+    driver: local
+  hf-mount-data:
+    driver: local

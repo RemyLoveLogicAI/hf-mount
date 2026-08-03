@@ -545,7 +545,7 @@ docker compose up -d hf-mount-nfs
 docker compose up -d hf-mount-fuse
 ```
 
-The compose file includes resource limits, health checks, named volumes, and environment variable configuration. See the `docker-compose.yml` reference below for the full configuration.
+The compose file includes resource limits, health checks, named volumes, and environment variable configuration. See the `docker-compose.yml` in the repository root for the full configuration.
 
 ### Resource requirements for model hosting
 
