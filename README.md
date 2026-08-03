@@ -434,7 +434,7 @@ For model hosting workloads, use these mount options for best performance and re
 
 ### Systemd service
 
-For production VPS deployments, run hf-mount as a systemd service. Example unit files are provided in `deploy/hf-mount.service` and `deploy/hf-mount@.service`.
+For production VPS deployments, run hf-mount as a systemd service. Example unit files are shown below.
 
 **Single mount (non-template):**
 
@@ -535,7 +535,7 @@ sudo systemctl start hf-mount@model.service
 
 ### Docker Compose
 
-For containerized VPS deployments, use the provided `docker-compose.yml`:
+For containerized VPS deployments, use a `docker-compose.yml` like the following:
 
 ```bash
 # Start the NFS backend (recommended for VPS)
@@ -545,7 +545,7 @@ docker compose up -d hf-mount-nfs
 docker compose up -d hf-mount-fuse
 ```
 
-The compose file includes resource limits, health checks, named volumes, and environment variable configuration. See the `docker-compose.yml` in the repository root for the full configuration.
+The compose file includes resource limits, health checks, named volumes, and environment variable configuration. See the `docker-compose.yml` reference below for the full configuration.
 
 ### Resource requirements for model hosting
 
@@ -607,6 +607,23 @@ With overlay mode:
 - Writes (e.g. compiled artifacts, cached downloads) go to the local disk layer
 - Each VPS maintains its own local cache independently
 - The remote source is never modified
+
+## Testing
+
+```bash
+# Unit tests (no network, no token)
+cargo test --lib --features fuse,nfs
+
+# Integration tests (require HF_TOKEN and FUSE)
+HF_TOKEN=... cargo test --release --features fuse,nfs --test fuse_ops -- --test-threads=1 --nocapture
+HF_TOKEN=... cargo test --release --features fuse,nfs --test nfs_ops -- --test-threads=1 --nocapture
+
+# Repo mount test (public repo, no token needed)
+cargo test --release --features nfs --test repo_ops -- --test-threads=1 --nocapture
+
+# Benchmarks
+HF_TOKEN=... cargo test --release --features fuse,nfs --test bench -- --nocapture
+```
 
 ## Troubleshooting
 
