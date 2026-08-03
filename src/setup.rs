@@ -194,6 +194,19 @@ pub struct MountOptions {
     #[arg(long, default_value_t = 45_000)]
     pub flush_shutdown_timeout_ms: u64,
 
+    /// Enable VPS-optimized defaults for model hosting workloads.
+    ///
+    /// When set, the following defaults are enforced as hard minimums/maximums,
+    /// overriding any explicitly-provided conflicting values:
+    /// - cache_size: at least 50 GB
+    /// - poll_interval_secs: at most 10 s
+    /// - metadata_ttl_ms: at most 5 s
+    /// - flush_shutdown_timeout_ms: at least 120 s
+    /// - poll_listing_concurrency: at least 8
+    /// - advanced_writes: always enabled (cannot be disabled with --vps-mode)
+    #[arg(long, default_value_t = false)]
+    pub vps_mode: bool,
+
     /// Disable filtering of OS junk files (.DS_Store, Thumbs.db, etc.).
     /// By default these files are rejected on create/mkdir/rename.
     #[arg(long, default_value_t = false)]
@@ -372,6 +385,16 @@ pub fn build_with_runtime(
             )
         }
     };
+
+    let mut options = options;
+    if options.vps_mode {
+        options.cache_size = options.cache_size.max(50_000_000_000);
+        options.poll_interval_secs = options.poll_interval_secs.min(10);
+        options.metadata_ttl_ms = options.metadata_ttl_ms.min(5_000);
+        options.flush_shutdown_timeout_ms = options.flush_shutdown_timeout_ms.max(120_000);
+        options.poll_listing_concurrency = options.poll_listing_concurrency.max(8);
+        options.advanced_writes = true;
+    }
 
     let backend = if is_nfs { "nfs" } else { "fuse" };
     let hub_client = runtime.block_on(async {
