@@ -1,66 +1,100 @@
-[Documentation Home](README.md)
+# 📚 hf-mount Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 1](https://img.shields.io/badge/Files_Documented-1-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-08-03](https://img.shields.io/badge/Last_Updated-2026--08--03-gray)
+
+## 🔗 Quick Links
+
+[📂 deploy](./deploy/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Hold documentation and deployment artifacts that explain and provision a VPS for installing and configuring the hf-mount tooling.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> Automates provisioning and configuration of a VPS to install and run the hf-mount tooling via a single Bash setup script.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Dependencies](#dependencies)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+hf-mount provides deployment tooling to prepare a virtual private server (VPS) so the hf-mount tooling can be installed and configured consistently. The repository centralizes the operational steps needed to turn a fresh server into a runtime host for hf-mount.
+
+The primary component is a single executable Bash script (vps-setup.sh) located in the deploy directory. That script automates installation and configuration on a fresh VPS and is intended as the canonical operational entry point for system administrators or automation pipelines that need a predictable environment for hf-mount.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **deploy** | Contains the deployment artifacts and the primary executable script (vps-setup.sh) that automates installation and configuration of hf-mount on a fresh VPS. Serves as the operational entry point for provisioning servers. | `bash`, `hf-mount tooling` |
+
+
+
+### 🏗️ Architecture
+
+Single-script, script-driven server provisioning: a procedural deployment approach centered on one Bash script that prepares a VPS for hf-mount.
+
+### 💡 Use Cases
+
+- ✦ Provision a fresh VPS with hf-mount installed and configured
+- ✦ Provide an operational entry point for system administrators to set up servers for hf-mount
+- ✦ Integrate the VPS setup script into automation pipelines to ensure a consistent runtime environment for hf-mount
+
+
+
+### 🔧 Technologies
+
+![bash: ](https://img.shields.io/badge/bash--blue) ![hf-mount tooling: ](https://img.shields.io/badge/hf--mount_tooling--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-This directory serves as the documentation and deployment index for provisioning a virtual private server (VPS) specifically to install and configure the hf-mount tooling. At the top level there are no root files; instead the functional content is organized into a dedicated deploy/ subdirectory that contains the automation and scripts needed to perform a fresh VPS setup. The deploy/ directory contains a single Bash script (vps-setup.sh) which automates the installation and configuration steps required on a fresh VPS to prepare it for hf-mount.
+### [deploy](./deploy/README.md)
+Contains deployment tooling and scripts for provisioning and configuring a VPS to install and configure the hf-mount tooling.
 
-Together, the documentation in this directory and the deploy/ artifacts provide a focused workflow: operators read the deployment notes and run the provided vps-setup.sh script to provision a server ready for hf-mount. This _docs directory functions as the canonical place to find deployment-focused guidance and the concrete script that executes those steps, making it the single entry point for VPS provisioning activities related to hf-mount within the repository.
 
-
-### File Organization
-
-There are no files at the _docs root; content is grouped under a single subdirectory (deploy/) that holds deployment automation. This keeps deployment scripts and their documentation isolated from other repository concerns so operators can find provisioning tooling in one place.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 deploy](./deploy/README.md)
-
-**Purpose:** Contains deployment tooling and a Bash script for provisioning and configuring a VPS to install and configure the hf-mount tooling.
+This directory holds deployment artifacts used to provision a virtual private server (VPS) specifically for installing and configuring the hf-mount tooling.
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## Dependencies
 
-### External Dependencies
+## 📊 Documentation Statistics
 
-| Dependency | Usage |
-| --- | --- |
-| `hf-mount tooling` | The VPS provisioning performed by deploy/vps-setup.sh prepares the server to install and configure the hf-mount tooling. |
-
-## Architecture Notes
-
-- Deployment artifacts are isolated in a single deploy/ subdirectory to keep provisioning scripts separate from other repository concerns.
-- A single script entry point (vps-setup.sh) centralizes the VPS setup process for repeatable provisioning.
+- **Files Documented**: 1
+- **Directories**: 2
+- **Coverage**: 100%
+- **Last Updated**: 2026-08-03
 
 ---
 
-## Navigation
+## 🧭 How to Navigate
 
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [deploy](./deploy/README.md)
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
 
 ---
 
-*Generated by Woden Docbot*
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for hf-mount*
