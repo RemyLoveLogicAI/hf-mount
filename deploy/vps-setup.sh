@@ -196,7 +196,6 @@ check_prerequisites() {
     log "Checking prerequisites..."
 
     local missing=()
-    local to_install=()
 
     for cmd in curl jq; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
