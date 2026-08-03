@@ -55,6 +55,7 @@ READ_ONLY="${READ_ONLY:-true}"
 
 SERVICES=()
 ROLLBACK_DIRS=()
+CREATED_USER=false
 
 cleanup() {
     echo ""
@@ -75,8 +76,8 @@ cleanup() {
         rm -rf "$dir" 2>/dev/null || true
     done
 
-    # Remove user
-    if id "$HF_MOUNT_USER" &>/dev/null; then
+    # Remove user (only if we created it)
+    if [[ "$CREATED_USER" == "true" ]] && id "$HF_MOUNT_USER" &>/dev/null; then
         echo "  Removing user: $HF_MOUNT_USER"
         userdel "$HF_MOUNT_USER" 2>/dev/null || true
     fi
@@ -347,7 +348,11 @@ download_binary() {
         tag="latest"
     fi
 
-    local url="https://github.com/${HF_MOUNT_REPO}/releases/${tag}/download/hf-mount-${arch}-${os}.tar.gz"
+    if [[ "$tag" == "latest" ]]; then
+        local url="https://github.com/${HF_MOUNT_REPO}/releases/latest/download/hf-mount-${arch}-${os}.tar.gz"
+    else
+        local url="https://github.com/${HF_MOUNT_REPO}/releases/download/${tag}/hf-mount-${arch}-${os}.tar.gz"
+    fi
     log "Downloading from $url"
 
     if ! curl -fsSL "$url" -o "$tmpdir/hf-mount.tar.gz"; then
@@ -381,8 +386,14 @@ create_system_user() {
         return 0
     fi
 
-    useradd --system --home-dir "$STATE_DIR" --shell /usr/sbin/nologin "$HF_MOUNT_USER"
-    log "User $HF_MOUNT_USER created"
+    if ! getent group "$HF_MOUNT_GROUP" &>/dev/null; then
+        log "Creating group: $HF_MOUNT_GROUP"
+        groupadd --system "$HF_MOUNT_GROUP"
+    fi
+
+    useradd --system --home-dir "$STATE_DIR" --shell /usr/sbin/nologin --gid "$HF_MOUNT_GROUP" "$HF_MOUNT_USER"
+    CREATED_USER=true
+    log "User $HF_MOUNT_USER created with group $HF_MOUNT_GROUP"
 }
 
 # ─── Step 6: Setup Directories ────────────────────────────────────────────
@@ -473,10 +484,6 @@ create_systemd_service() {
     opts=$(build_mount_options "$backend")
 
     local backend_bin="hf-mount-${backend}"
-    local fuse_flag=""
-    if [[ "$backend" == "fuse" ]]; then
-        fuse_flag="--fuse"
-    fi
 
     cat > "$service_file" <<EOF
 [Unit]
@@ -566,7 +573,15 @@ MOUNT_BASE_DIR="${MOUNT_BASE_DIR:-/mnt/models}"
 CACHE_DIR="${CACHE_DIR:-/var/cache/hf-mount}"
 STATE_DIR="${STATE_DIR:-/var/lib/hf-mount}"
 TOKEN_DIR="${TOKEN_DIR:-/etc/hf-mount}"
-HF_MOUNT_USER="hf-mount"
+HF_MOUNT_USER="${HF_MOUNT_USER:-hf-mount}"
+HF_MOUNT_GROUP="${HF_MOUNT_GROUP:-hf-mount}"
+CACHE_SIZE="${CACHE_SIZE:-50000000000}"
+POLL_INTERVAL_SECS="${POLL_INTERVAL_SECS:-10}"
+POLL_LISTING_CONCURRENCY="${POLL_LISTING_CONCURRENCY:-8}"
+METADATA_TTL_MS="${METADATA_TTL_MS:-5000}"
+FLUSH_SHUTDOWN_TIMEOUT_MS="${FLUSH_SHUTDOWN_TIMEOUT_MS:-120000}"
+ADVANCED_WRITES="${ADVANCED_WRITES:-true}"
+READ_ONLY="${READ_ONLY:-true}"
 
 usage() {
     cat <<EOF
@@ -773,26 +788,25 @@ main() {
     mkdir -p "$mount_point"
     chown "$HF_MOUNT_USER:$HF_MOUNT_GROUP" "$mount_point"
 
-    # Build options
+    # Build options (reuse configured values)
     local opts=()
     opts+=("--token-file" "$TOKEN_DIR/hf-token")
     opts+=("--cache-dir" "$CACHE_DIR")
-    opts+=("--cache-size" "50000000000")
-    opts+=("--poll-interval-secs" "10")
-    opts+=("--poll-listing-concurrency" "8")
-    opts+=("--metadata-ttl-ms" "5000")
-    opts+=("--flush-shutdown-timeout-ms" "120000")
-    opts+=("--advanced-writes")
+    opts+=("--cache-size" "${CACHE_SIZE}")
+    opts+=("--poll-interval-secs" "${POLL_INTERVAL_SECS}")
+    opts+=("--poll-listing-concurrency" "${POLL_LISTING_CONCURRENCY}")
+    opts+=("--metadata-ttl-ms" "${METADATA_TTL_MS}")
+    opts+=("--flush-shutdown-timeout-ms" "${FLUSH_SHUTDOWN_TIMEOUT_MS}")
+
+    if [[ "$ADVANCED_WRITES" == "true" ]]; then
+        opts+=("--advanced-writes")
+    fi
 
     if [[ "$read_only" == "true" ]]; then
         opts+=("--read-only")
     fi
 
     local backend_bin="hf-mount-${backend}"
-    local fuse_flag=""
-    if [[ "$backend" == "fuse" ]]; then
-        fuse_flag="--fuse"
-    fi
 
     # Create systemd service
     cat > "$SERVICE_DIR/$service" <<EOF
@@ -855,30 +869,26 @@ HELPER_EOF
 # ─── Step 12: Install NFS dependencies if needed ──────────────────────────
 
 install_nfs_deps() {
-    if [[ "$DEFAULT_BACKEND" == "nfs" ]]; then
-        log "Installing NFS dependencies (nfs-common)..."
-        if command -v apt-get >/dev/null 2>&1; then
-            apt-get install -y -qq nfs-common 2>/dev/null || true
-        elif command -v yum >/dev/null 2>&1; then
-            yum install -y nfs-utils 2>/dev/null || true
-        elif command -v dnf >/dev/null 2>&1; then
-            dnf install -y nfs-utils 2>/dev/null || true
-        fi
+    log "Installing NFS dependencies (nfs-common)..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get install -y -qq nfs-common 2>/dev/null || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y nfs-utils 2>/dev/null || true
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y nfs-utils 2>/dev/null || true
     fi
 }
 
 # ─── Step 13: Install FUSE dependencies if needed ─────────────────────────
 
 install_fuse_deps() {
-    if [[ "$DEFAULT_BACKEND" == "fuse" ]]; then
-        log "Installing FUSE dependencies (fuse3)..."
-        if command -v apt-get >/dev/null 2>&1; then
-            apt-get install -y -qq fuse3 2>/dev/null || true
-        elif command -v yum >/dev/null 2>&1; then
-            yum install -y fuse3 2>/dev/null || true
-        elif command -v dnf >/dev/null 2>&1; then
-            dnf install -y fuse3 2>/dev/null || true
-        fi
+    log "Installing FUSE dependencies (fuse3)..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get install -y -qq fuse3 2>/dev/null || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y fuse3 2>/dev/null || true
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y fuse3 2>/dev/null || true
     fi
 }
 
@@ -893,14 +903,14 @@ main() {
 
     check_root
     check_prerequisites
+    install_nfs_deps
+    install_fuse_deps
     detect_backend
     create_system_user
     setup_directories
     setup_hf_token
     install_hf_mount
     setup_cache
-    install_nfs_deps
-    install_fuse_deps
     pre_mount_repos
     create_vps_model_mount
 
