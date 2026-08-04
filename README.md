@@ -429,7 +429,7 @@ Environment=HF_TOKEN=your_token_here
 Environment=CACHE_DIR=/var/cache/hf-mount
 ExecStartPre=/usr/bin/mkdir -p /mnt/model /var/cache/hf-mount
 ExecStart=/usr/local/bin/hf-mount start --vps-mode repo openai/gpt-oss-20b /mnt/model
-ExecStop=/usr/bin/hf-mount stop /mnt/model
+ExecStop=/usr/local/bin/hf-mount stop /mnt/model
 Restart=on-failure
 RestartSec=10
 LimitNOFILE=65536

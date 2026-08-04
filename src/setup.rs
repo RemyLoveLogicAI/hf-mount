@@ -607,6 +607,10 @@ pub fn build_with_runtime(
             flush_max_batch_window: std::time::Duration::from_millis(options.flush_max_batch_window_ms),
             flush_shutdown_timeout: std::time::Duration::from_millis(flush_shutdown_timeout_ms),
             read_fetch_timeout: std::time::Duration::from_millis(options.read_fetch_timeout_ms),
+            // NFS clients use inode numbers as stable file IDs; evicting an
+            // inode the client still holds would surface as NFS3ERR_STALE on
+            // its next RPC. The eviction safety hooks (forget / inval_entry)
+            // only exist on the FUSE side, so force the limit off here.
             inode_soft_limit: if is_nfs { 0 } else { options.inode_soft_limit },
             lru_sweep_interval: std::time::Duration::from_millis(options.lru_sweep_interval_ms),
         },
