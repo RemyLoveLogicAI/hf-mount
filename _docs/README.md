@@ -1,57 +1,101 @@
-[Documentation Home](README.md)
+# 📚 hf-mount Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 1](https://img.shields.io/badge/Files_Documented-1-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-08-04](https://img.shields.io/badge/Last_Updated-2026--08--04-gray)
+
+## 🔗 Quick Links
+
+[📂 src](./src/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Holds documentation-level index and navigation for modules that configure and prepare runtime components used during application startup and initialization.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> Centralized runtime configuration and initialization logic for application startup and component (re)initialization.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+hf-mount centralizes the application's runtime configuration and startup initialization in a single source module. The repository contains a focused setup implementation (setup.rs) that implements top-level functions to configure and prepare runtime components used at application startup and when components must be reinitialized.
+
+The main component is a minimal, single-file initialization module that acts as the entry point for bringing runtime dependencies online and wiring them to the rest of the system. Other parts of the application call into these setup functions to obtain configured components and runtime state during startup or reinitialization.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **setup.rs** | Top-level runtime configuration and initialization module. Implements functions invoked at application startup or when runtime components need to be (re)initialized, and supplies configured components to other parts of the application. | `Rust` |
+
+
+
+### 🏗️ Architecture
+
+A single-module initialization component that serves as the centralized bootstrap/entry point for runtime configuration within a larger application; module-based, focused on startup and reinitialization flows.
+
+### 💡 Use Cases
+
+- ✦ Initialize and configure runtime components during application startup
+- ✦ Provide a centralized place to reinitialize runtime components at runtime
+- ✦ Serve as the entry point for other parts of the application to obtain configured runtime components
+
+
+
+### 🔧 Technologies
+
+
+**Languages:** ![Rust: ](https://img.shields.io/badge/Rust--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-This directory is an index-style documentation folder that describes the runtime configuration and initialization code housed under the source tree. At the root level there are no source files; instead, this directory documents the purpose and organization of runtime-preparation modules so developers can quickly understand startup responsibilities and where to find implementation.
+### [src](./src/README.md)
+Contains modules related to configuring and preparing runtime components used by the application at startup and during initialization.
 
-The primary concrete content referenced by this documentation is the src/ subdirectory, which contains a single file, setup.rs. That file implements top-level functions responsible for configuring and preparing runtime components and is intended to be invoked during application startup and initialization. Together, the documentation here and the src/ module form a focused area of the codebase responsible for preparing runtime components before the application begins normal operation.
 
-
-### File Organization
-
-This documentation directory acts as a top-level index for runtime configuration code. Implementation lives in the src/ subdirectory (one file: setup.rs). There are no files at this directory root; the structure separates documentation/indexing from implementation to make startup configuration code easy to discover.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 src](./src/README.md)
-
-**Purpose:** Contains modules related to configuring and preparing runtime components used by the application at startup and during initialization.
+This directory hosts source modules that focus on configuration and runtime preparation tasks for the application.
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## Architecture Notes
 
-- This directory documents a focused subsystem: startup/runtime configuration. Implementation is isolated in src/setup.rs so that initialization logic is centralized and discoverable.
-- No additional architectural patterns are described here; the documentation mirrors the actual file organization without introducing concepts not present in the source.
+## 📊 Documentation Statistics
 
----
-
-## Navigation
-
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [src](./src/README.md)
+- **Files Documented**: 1
+- **Directories**: 2
+- **Coverage**: 100%
+- **Last Updated**: 2026-08-04
 
 ---
 
-*Generated by Woden Docbot*
+## 🧭 How to Navigate
+
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
+
+---
+
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for hf-mount*
