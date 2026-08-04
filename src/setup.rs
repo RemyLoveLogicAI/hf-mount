@@ -16,6 +16,32 @@ use crate::overlay::OverlayBacking;
 use crate::virtual_fs::{VfsConfig, VirtualFs};
 use crate::xet::{StagingDir, XetSessions};
 
+/// VPS-optimized defaults for model hosting workloads.
+const VPS_CACHE_SIZE: u64 = 50_000_000_000;
+const VPS_POLL_INTERVAL_SECS: u64 = 10;
+const VPS_METADATA_TTL_MS: u64 = 5_000;
+const VPS_FLUSH_SHUTDOWN_TIMEOUT_MS: u64 = 120_000;
+const VPS_POLL_LISTING_CONCURRENCY: u32 = 8;
+
+// VPS-tuned option defaults (used to detect whether the user explicitly set a value).
+const DEFAULT_CACHE_SIZE: u64 = 10_000_000_000;
+const DEFAULT_POLL_INTERVAL_SECS: u64 = 30;
+const DEFAULT_METADATA_TTL_MS: u64 = 10_000;
+const DEFAULT_FLUSH_SHUTDOWN_TIMEOUT_MS: u64 = 45_000;
+const DEFAULT_POLL_LISTING_CONCURRENCY: u32 = 4;
+
+/// Returns the effective value for a VPS-tuned option: if `vps_mode` is enabled
+/// and the current value equals the default, apply the VPS override; otherwise
+/// keep the user's explicit value.
+#[inline]
+fn vps_default<T: PartialEq>(vps_mode: bool, current: T, vps_val: T, default: T) -> T {
+    if vps_mode && current == default {
+        vps_val
+    } else {
+        current
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, clap::ValueEnum)]
 pub enum CacheMode {
     /// xet-core's chunk_cache: caches xorb byte ranges on disk.
@@ -228,8 +254,9 @@ pub struct MountOptions {
     pub overlay: bool,
 
     /// Enable VPS-optimized defaults for model hosting on dedicated servers.
-    /// Overrides: cache_size=50G, poll_interval=10s, metadata_ttl=5s,
-    /// flush_shutdown_timeout=120s, poll_listing_concurrency=8, advanced_writes.
+    /// Overrides: --cache-size=50G, --poll-interval-secs=10s,
+    /// --metadata-ttl-ms=5s, --flush-shutdown-timeout-ms=120s,
+    /// --poll-listing-concurrency=8, advanced_writes.
     /// Best for containers and VPS instances with dedicated storage and memory.
     #[arg(long, default_value_t = false)]
     pub vps_mode: bool,
@@ -430,24 +457,14 @@ pub fn build_with_runtime(
     let xet_ctx = XetContext::default().expect("Failed to create XetContext");
     let cas_config = build_cas_config(&xet_ctx, &runtime, &refresher);
 
-    // VPS mode: apply optimized defaults for model hosting workloads
-    let poll_interval_secs = if options.vps_mode {
-        10
-    } else {
-        options.poll_interval_secs
-    };
-    let metadata_ttl_ms = if options.vps_mode { 5_000 } else { options.metadata_ttl_ms };
-    let cache_size = if options.vps_mode {
-        50_000_000_000
-    } else {
-        options.cache_size
-    };
-    let flush_shutdown_timeout_ms = if options.vps_mode {
-        120_000
-    } else {
-        options.flush_shutdown_timeout_ms
-    };
-    let poll_listing_concurrency = if options.vps_mode { 8 } else { options.poll_listing_concurrency };
+    // VPS mode: apply optimized defaults only for options that still have their
+    // default values, so later CLI overrides like --cache-size after --vps-mode
+    // are respected.
+    let poll_interval_secs = vps_default(options.vps_mode, options.poll_interval_secs, VPS_POLL_INTERVAL_SECS, DEFAULT_POLL_INTERVAL_SECS);
+    let metadata_ttl_ms = vps_default(options.vps_mode, options.metadata_ttl_ms, VPS_METADATA_TTL_MS, DEFAULT_METADATA_TTL_MS);
+    let cache_size = vps_default(options.vps_mode, options.cache_size, VPS_CACHE_SIZE, DEFAULT_CACHE_SIZE);
+    let flush_shutdown_timeout_ms = vps_default(options.vps_mode, options.flush_shutdown_timeout_ms, VPS_FLUSH_SHUTDOWN_TIMEOUT_MS, DEFAULT_FLUSH_SHUTDOWN_TIMEOUT_MS);
+    let poll_listing_concurrency = vps_default(options.vps_mode, options.poll_listing_concurrency, VPS_POLL_LISTING_CONCURRENCY, DEFAULT_POLL_LISTING_CONCURRENCY);
     let advanced_writes_flag = options.advanced_writes || options.vps_mode;
 
     // Ensure cache directory exists and is writable (needed for staging even without chunk cache).

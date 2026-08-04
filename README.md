@@ -240,7 +240,7 @@ The same `FUSE_NOTIFY_INVAL_INODE` writev can also wedge at **runtime** (not jus
 | `--inode-soft-limit` | `0` | Soft cap on the in-memory inode table (0 disables). See "Bounding inode memory" below. |
 | `--lru-sweep-interval-ms` | `5000` | Background LRU sweep interval in milliseconds. Only meaningful when `--inode-soft-limit > 0`. |
 | `--overlay` | `false` | Treat the mount point as a writable local layer over the remote source. Local files persist on disk; writes are never pushed to the remote. See "Overlay mode" below. |
-| `--vps-mode` | `false` | Enable VPS-optimized defaults: cache_size=50 GB, poll_interval=10 s, metadata_ttl=5 s, flush_shutdown_timeout=120 s, poll_listing_concurrency=8, advanced_writes. See "VPS Deployment" below. |
+| `--vps-mode` | `false` | Enable VPS-optimized defaults: --cache-size=50 GB, --poll-interval-secs=10 s, --metadata-ttl-ms=5 s, --flush-shutdown-timeout-ms=120 s, --poll-listing-concurrency=8, advanced_writes. See "VPS Deployment" below. |
 
 ### Bounding inode memory
 
