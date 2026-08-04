@@ -347,31 +347,29 @@ download_binary() {
         tag="latest"
     fi
 
+    local base_url
     if [[ "$tag" == "latest" ]]; then
-        local url="https://github.com/${HF_MOUNT_REPO}/releases/latest/download/hf-mount-${arch}-${os}.tar.gz"
+        base_url="https://github.com/${HF_MOUNT_REPO}/releases/latest/download"
     else
-        local url="https://github.com/${HF_MOUNT_REPO}/releases/download/${tag}/hf-mount-${arch}-${os}.tar.gz"
-    fi
-    log "Downloading from $url"
-
-    if ! curl -fsSL "$url" -o "$tmpdir/hf-mount.tar.gz"; then
-        die "Failed to download hf-mount binary from $url"
+        base_url="https://github.com/${HF_MOUNT_REPO}/releases/download/${tag}"
     fi
 
-    tar -xzf "$tmpdir/hf-mount.tar.gz" -C "$tmpdir/"
-
-    # Find and copy binaries
     local found=0
     for bin in hf-mount hf-mount-nfs hf-mount-fuse; do
-        if [[ -f "$tmpdir/$bin" ]]; then
-            cp "$tmpdir/$bin" "$INSTALL_DIR/"
+        local url="${base_url}/${bin}-${arch}-${os}"
+        log "Downloading ${bin} from $url"
+
+        if curl -fsSL "$url" -o "$tmpdir/${bin}"; then
+            cp "$tmpdir/${bin}" "$INSTALL_DIR/"
             chmod +x "$INSTALL_DIR/$bin"
             found=$((found + 1))
+        else
+            log "Warning: Failed to download ${bin} from $url"
         fi
     done
 
     if [[ $found -eq 0 ]]; then
-        die "No hf-mount binaries found in downloaded archive"
+        die "No hf-mount binaries could be downloaded"
     fi
 }
 
@@ -393,6 +391,11 @@ create_system_user() {
     useradd --system --home-dir "$STATE_DIR" --shell /usr/sbin/nologin --gid "$HF_MOUNT_GROUP" "$HF_MOUNT_USER"
     CREATED_USER=true
     log "User $HF_MOUNT_USER created with group $HF_MOUNT_GROUP"
+
+    if getent group fuse >/dev/null 2>&1; then
+        usermod -aG fuse "$HF_MOUNT_USER"
+        log "Added $HF_MOUNT_USER to fuse group"
+    fi
 }
 
 # ─── Step 6: Setup Directories ────────────────────────────────────────────
@@ -490,6 +493,13 @@ create_systemd_service() {
 
     local backend_bin="hf-mount-${backend}"
 
+    local svc_user="${HF_MOUNT_USER}"
+    local svc_group="${HF_MOUNT_GROUP}"
+    if [[ "$backend" == "nfs" ]]; then
+        svc_user="root"
+        svc_group="root"
+    fi
+
     cat > "$service_file" <<EOF
 [Unit]
 Description=hf-mount ${backend} mount for ${repo}
@@ -498,8 +508,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=${HF_MOUNT_USER}
-Group=${HF_MOUNT_GROUP}
+User=${svc_user}
+Group=${svc_group}
 Environment=HOME=${STATE_DIR}
 Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
 ExecStartPre=/bin/mkdir -p ${mount_point}
@@ -813,6 +823,13 @@ main() {
 
     local backend_bin="hf-mount-${backend}"
 
+    local svc_user="${HF_MOUNT_USER}"
+    local svc_group="${HF_MOUNT_GROUP}"
+    if [[ "$backend" == "nfs" ]]; then
+        svc_user="root"
+        svc_group="root"
+    fi
+
     # Create systemd service
     cat > "$SERVICE_DIR/$service" <<EOF
 [Unit]
@@ -822,8 +839,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=${HF_MOUNT_USER}
-Group=${HF_MOUNT_GROUP}
+User=${svc_user}
+Group=${svc_group}
 Environment=HOME=${STATE_DIR}
 Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
 ExecStartPre=/bin/mkdir -p ${mount_point}
