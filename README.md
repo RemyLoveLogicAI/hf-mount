@@ -240,6 +240,7 @@ The same `FUSE_NOTIFY_INVAL_INODE` writev can also wedge at **runtime** (not jus
 | `--inode-soft-limit` | `0` | Soft cap on the in-memory inode table (0 disables). See "Bounding inode memory" below. |
 | `--lru-sweep-interval-ms` | `5000` | Background LRU sweep interval in milliseconds. Only meaningful when `--inode-soft-limit > 0`. |
 | `--overlay` | `false` | Treat the mount point as a writable local layer over the remote source. Local files persist on disk; writes are never pushed to the remote. See "Overlay mode" below. |
+| `--vps-mode` | `false` | Enable VPS-optimized defaults: cache_size=50 GB, poll_interval=10 s, metadata_ttl=5 s, flush_shutdown_timeout=120 s, poll_listing_concurrency=8, advanced_writes. See "VPS Deployment" below. |
 
 ### Bounding inode memory
 
@@ -349,6 +350,255 @@ helm install hf-csi oci://ghcr.io/huggingface/charts/hf-csi-driver
 ```
 
 See the [hf-csi-driver README](https://github.com/huggingface/hf-csi-driver#readme) for setup and examples.
+
+## VPS Deployment
+
+hf-mount is designed to run as a long-lived daemon on VPS instances, containers, and dedicated servers for model hosting workloads. The NFS backend is recommended (no root, no kernel extension, works everywhere).
+
+### Quick start
+
+```bash
+# Install from source or download a release binary
+# Then mount a model repo with VPS-optimized defaults:
+hf-mount start --vps-mode --hf-token $HF_TOKEN repo openai/gpt-oss-20b /mnt/model
+
+# Or for a read-write bucket:
+hf-mount start --vps-mode --hf-token $HF_TOKEN bucket myorg/my-bucket /mnt/data
+```
+
+### VPS-optimized mount options
+
+Model hosting on a dedicated VPS benefits from tuning four knobs:
+
+| Option | Default | VPS recommended | Why |
+| --- | --- | --- | --- |
+| `--cache-size` | 10 GB | 50 GB | Models like Llama-3-8B are ~16 GB; a larger cache holds more shards on disk, reducing repeat fetches |
+| `--metadata-ttl-ms` | 10 000 ms | 5 000 ms | Shorter TTL catches remote model updates faster |
+| `--poll-interval-secs` | 30 s | 10 s | More frequent polling for fresher content |
+| `--flush-shutdown-timeout-ms` | 45 000 ms | 120 000 ms | Gives the daemon more time to flush staged writes on SIGTERM (e.g. pod drain) |
+| `--poll-listing-concurrency` | 4 | 8 | Higher concurrency keeps poll rounds fast on dedicated hardware |
+| `--advanced-writes` | false | true (via `--vps-mode`) | Needed for staging files on disk when writing |
+
+### `--vps-mode` flag
+
+Pass `--vps-mode` to apply all of the above in one shot:
+
+```bash
+hf-mount start --vps-mode --hf-token $HF_TOKEN repo meta-llama/Llama-3-8B /mnt/llama
+```
+
+This is equivalent to:
+
+```bash
+hf-mount start \
+  --cache-size 50000000000 \
+  --metadata-ttl-ms 5000 \
+  --poll-interval-secs 10 \
+  --flush-shutdown-timeout-ms 120000 \
+  --poll-listing-concurrency 8 \
+  --advanced-writes \
+  --hf-token $HF_TOKEN \
+  repo meta-llama/Llama-3-8B /mnt/llama
+```
+
+You can still override individual flags after `--vps-mode`; clap uses the last value seen.
+
+### Resource requirements for model hosting
+
+| Resource | Minimum | Recommended | Notes |
+| --- | --- | --- | --- |
+| Disk | 20 GB | 100 GB+ | Cache needs room for model shards plus staging files. A 70B model repo is ~140 GB; size accordingly |
+| Memory | 512 MB | 2 GB+ | Each open file handle holds a prefetch buffer (~8 MB worst case). The handle pool caps at 64 entries |
+| Network | 10 Mbps | 100 Mbps+ | First reads stream shards from the Hub. Warm reads hit local cache. Consecutive model loads benefit from high bandwidth |
+| CPU | 1 core | 4+ cores | The poll loop and xet-core reconstruction are CPU-bound during initial model load |
+
+### systemd unit file
+
+Run hf-mount as a systemd service so it starts on boot and restarts on failure:
+
+```ini
+# /etc/systemd/system/hf-mount-model.service
+[Unit]
+Description=hf-mount model hosting (NFS backend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=HF_TOKEN=your_token_here
+Environment=CACHE_DIR=/var/cache/hf-mount
+ExecStartPre=/usr/bin/mkdir -p /mnt/model /var/cache/hf-mount
+ExecStart=/usr/local/bin/hf-mount start --vps-mode repo openai/gpt-oss-20b /mnt/model
+ExecStop=/usr/bin/hf-mount stop /mnt/model
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now hf-mount-model.service
+```
+
+To use the FUSE backend instead, change the binary to `hf-mount-fuse` and add `--fuse` to the `ExecStart` line.
+
+### Docker Compose
+
+```yaml
+# docker-compose.yml
+version: "3.9"
+
+services:
+  hf-mount:
+    image: huggingface/hf-mount:latest
+    privileged: true
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+      CACHE_DIR: /cache
+    volumes:
+      - model-cache:/cache
+      - model-mount:/mnt/model
+    command: >
+      hf-mount start --vps-mode
+      repo openai/gpt-oss-20b /mnt/model
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2"
+
+volumes:
+  model-cache:
+  model-mount:
+```
+
+The container must run `--privileged` (or with `--cap-add SYS_ADMIN`) because the NFS backend shells out to `mount.nfs`. On Docker Desktop / non-Linux hosts, use the FUSE backend instead:
+
+```yaml
+services:
+  hf-mount:
+    image: huggingface/hf-mount:latest
+    devices:
+      - /dev/fuse
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+    volumes:
+      - model-cache:/cache
+      - model-mount:/mnt/model
+    command: >
+      hf-mount start --vps-mode --fuse
+      repo openai/gpt-oss-20b /mnt/model
+    restart: unless-stopped
+```
+
+## Multi-VPS Shared Storage
+
+When running inference across multiple VPS instances, sharing a single mount via NFS avoids redundant downloads and keeps model shards consistent.
+
+### NFS server mode
+
+hf-mount's NFS backend exports the mounted repo/bucket as an NFS server on `127.0.0.1`. On a single VPS this is mounted locally. For multi-VPS sharing, run one "NFS server" VPS that other VPS instances mount over the network.
+
+1. On the server VPS, mount the model with hf-mount (NFS backend, default):
+
+   ```bash
+   hf-mount start --vps-mode --hf-token $HF_TOKEN repo meta-llama/Llama-3-8B /mnt/llama
+   ```
+
+2. Install and start a system NFS server on the same VPS, exporting `/mnt/llama`:
+
+   ```bash
+   # Debian/Ubuntu
+   sudo apt-get install -y nfs-kernel-server
+   echo "/mnt/llama *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+   sudo exportfs -ra
+   sudo systemctl enable --now nfs-server
+   ```
+
+3. On each client VPS, mount the server's export:
+
+   ```bash
+   sudo mount -t nfs server-vps.internal:/mnt/llama /mnt/llama
+   ```
+
+   Or add to `/etc/fstab`:
+
+   ```fstab
+   server-vps.internal:/mnt/llama  /mnt/llama  nfs  defaults,_netdev  0  0
+   ```
+
+### Overlay mode for multi-VPS caching
+
+When each VPS has its own local disk but you want a shared remote view with per-VPS local caching, use `--overlay`:
+
+```bash
+# On each VPS independently:
+hf-mount start --vps-mode --overlay --hf-token $HF_TOKEN \
+  repo meta-llama/Llama-3-8B /mnt/llama
+```
+
+Each VPS reads from the same remote repo but writes compiled artifacts, torch.compile caches, or tokenizer caches to its own local disk under `/mnt/llama`. The local layer survives unmount/remount.
+
+### Overlay for shared compilation caches
+
+```bash
+# Producer: regular bucket mount, writes compiled artifacts to the bucket
+hf-mount start --hf-token $HF_TOKEN bucket myorg/torch-compile-cache "$TORCHINDUCTOR_CACHE_DIR"
+
+# Consumers: overlay mount, reads from bucket, compiles locally on miss
+hf-mount start --vps-mode --overlay --hf-token $HF_TOKEN \
+  bucket myorg/torch-compile-cache "$TORCHINDUCTOR_CACHE_DIR"
+```
+
+## Troubleshooting
+
+### Mount timeouts
+
+If a mount hangs or fails with a timeout:
+
+1. Check that the Hub is reachable: `curl -I https://huggingface.co`
+2. Verify your `HF_TOKEN` is valid: `huggingface-cli whoami`
+3. Increase the per-chunk read timeout: `--read-fetch-timeout-ms 60000`
+4. Check disk space on the cache directory: `df -h /tmp/hf-mount-cache`
+5. For NFS mounts, verify `mount.nfs` is installed: `which mount.nfs`
+
+### Stale mounts after remote changes
+
+Files appear old after a remote update:
+
+1. Lower `--metadata-ttl-ms` to 5 000 ms or less
+2. Lower `--poll-interval-secs` to 10 s for more frequent background polling
+3. Use `--vps-mode` which sets both to their VPS-recommended values
+4. Verify the poll loop is running: check `~/.hf-mount/logs/` for `poll` messages
+
+### Permission errors
+
+If you see `EACCES` or `Operation not permitted`:
+
+1. Check the UID/GID of the mount process matches the accessing user, or pass `--uid`/`--gid`
+2. For FUSE, ensure `user_allow_other` is set in `/etc/fuse.conf` (Linux)
+3. For NFS in containers, run with `--privileged` or `--cap-add SYS_ADMIN`
+4. On macOS, grant Full Disk Access to the terminal or IDE in System Settings > Privacy > Full Disk Access
+
+### Too many open files
+
+If you see `EMFILE` or `ENFILE` errors:
+
+1. Raise the fd limit: `ulimit -n 65536`
+2. Or set it in the systemd unit: `LimitNOFILE=65536`
+3. Reduce `--max-threads` (FUSE) or `--poll-listing-concurrency`
+
+### Container mount failures (NFS)
+
+Inside Docker or Kubernetes, NFS mounts can fail with `Operation not permitted`:
+
+1. Run the container with `--privileged` or `--cap-add SYS_ADMIN`
+2. Ensure the seccomp profile allows the `mount` syscall
+3. As an alternative, use the FUSE backend with `--fuse` and mount `/dev/fuse`
 
 ## Testing
 

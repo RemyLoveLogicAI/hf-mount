@@ -226,6 +226,13 @@ pub struct MountOptions {
     /// Writes are never pushed to remote.
     #[arg(long, default_value_t = false)]
     pub overlay: bool,
+
+    /// Enable VPS-optimized defaults for model hosting on dedicated servers.
+    /// Overrides: cache_size=50G, poll_interval=10s, metadata_ttl=5s,
+    /// flush_shutdown_timeout=120s, poll_listing_concurrency=8, advanced_writes.
+    /// Best for containers and VPS instances with dedicated storage and memory.
+    #[arg(long, default_value_t = false)]
+    pub vps_mode: bool,
 }
 
 /// CLI args for the foreground FUSE/NFS binaries.
@@ -393,6 +400,10 @@ pub fn build_with_runtime(
         );
     }
 
+    if options.vps_mode {
+        info!("VPS mode enabled: applying optimized defaults for model hosting");
+    }
+
     let read_only = (options.read_only || hub_client.is_repo()) && !options.overlay;
     if hub_client.is_repo() && !options.read_only && !options.overlay {
         info!("Repo mounts are always read-only");
@@ -419,6 +430,26 @@ pub fn build_with_runtime(
     let xet_ctx = XetContext::default().expect("Failed to create XetContext");
     let cas_config = build_cas_config(&xet_ctx, &runtime, &refresher);
 
+    // VPS mode: apply optimized defaults for model hosting workloads
+    let poll_interval_secs = if options.vps_mode {
+        10
+    } else {
+        options.poll_interval_secs
+    };
+    let metadata_ttl_ms = if options.vps_mode { 5_000 } else { options.metadata_ttl_ms };
+    let cache_size = if options.vps_mode {
+        50_000_000_000
+    } else {
+        options.cache_size
+    };
+    let flush_shutdown_timeout_ms = if options.vps_mode {
+        120_000
+    } else {
+        options.flush_shutdown_timeout_ms
+    };
+    let poll_listing_concurrency = if options.vps_mode { 8 } else { options.poll_listing_concurrency };
+    let advanced_writes_flag = options.advanced_writes || options.vps_mode;
+
     // Ensure cache directory exists and is writable (needed for staging even without chunk cache).
     std::fs::create_dir_all(&options.cache_dir)
         .unwrap_or_else(|e| panic!("Failed to create cache dir {:?}: {e}", options.cache_dir));
@@ -433,7 +464,7 @@ pub fn build_with_runtime(
         );
     }
     let file_cache = if options.cache_mode == CacheMode::File && !options.no_disk_cache {
-        Some(FileCache::new(&options.cache_dir, options.cache_size).expect("Failed to create file cache"))
+        Some(FileCache::new(&options.cache_dir, cache_size).expect("Failed to create file cache"))
     } else {
         None
     };
@@ -446,7 +477,7 @@ pub fn build_with_runtime(
             .unwrap_or_else(|e| panic!("Failed to create xorbs dir {:?}: {e}", xorbs_dir));
         let config = CacheConfig {
             cache_directory: xorbs_dir,
-            cache_size: options.cache_size,
+            cache_size,
         };
         Some(get_cache(&xet_ctx.config, &config).expect("Failed to create chunk cache"))
     };
@@ -463,7 +494,7 @@ pub fn build_with_runtime(
     let upload_config = if remote_read_only { None } else { Some(cas_config) };
     let xet_sessions = XetSessions::new(xet_ctx, download_session, upload_config, cached_client, xorb_cache);
 
-    let advanced_writes = options.advanced_writes || options.overlay || (is_nfs && !read_only);
+    let advanced_writes = advanced_writes_flag || options.overlay || (is_nfs && !read_only);
 
     // Overlay: open a pre-mount fd to the mount point directory. The fd is
     // held by OverlayBacking so overlay-local filesystem ops can stay rooted
@@ -529,16 +560,16 @@ pub fn build_with_runtime(
         "Config: advanced_writes={} overlay={} remote_read_only={} direct_io={} poll_interval={}s \
          poll_listing_concurrency={} metadata_ttl={}ms \
          cache_dir={:?} cache_size={} no_disk_cache={} cache_mode={:?} max_staging_size={} max_threads={} \
-         flush_debounce={}ms flush_max_batch={}ms read_fetch_timeout={}ms uid={} gid={} filter_os_files={}",
+         flush_debounce={}ms flush_max_batch={}ms read_fetch_timeout={}ms uid={} gid={} filter_os_files={} vps_mode={}",
         advanced_writes,
         options.overlay,
         remote_read_only,
         options.direct_io,
-        options.poll_interval_secs,
-        options.poll_listing_concurrency,
-        options.metadata_ttl_ms,
+        poll_interval_secs,
+        poll_listing_concurrency,
+        metadata_ttl_ms,
         options.cache_dir,
-        options.cache_size,
+        cache_size,
         options.no_disk_cache,
         options.cache_mode,
         options.max_staging_size,
@@ -549,9 +580,10 @@ pub fn build_with_runtime(
         uid,
         gid,
         !options.no_filter_os_files,
+        options.vps_mode,
     );
 
-    let metadata_ttl = std::time::Duration::from_millis(options.metadata_ttl_ms);
+    let metadata_ttl = std::time::Duration::from_millis(metadata_ttl_ms);
 
     let virtual_fs = VirtualFs::new(
         runtime.clone(),
@@ -565,20 +597,16 @@ pub fn build_with_runtime(
             advanced_writes,
             uid,
             gid,
-            poll_interval_secs: options.poll_interval_secs,
-            poll_listing_concurrency: options.poll_listing_concurrency as usize,
+            poll_interval_secs,
+            poll_listing_concurrency: poll_listing_concurrency as usize,
             metadata_ttl,
             serve_lookup_from_cache: !options.metadata_ttl_minimal,
             filter_os_files: !options.no_filter_os_files,
             direct_io: options.direct_io && !is_nfs,
             flush_debounce: std::time::Duration::from_millis(options.flush_debounce_ms),
             flush_max_batch_window: std::time::Duration::from_millis(options.flush_max_batch_window_ms),
-            flush_shutdown_timeout: std::time::Duration::from_millis(options.flush_shutdown_timeout_ms),
+            flush_shutdown_timeout: std::time::Duration::from_millis(flush_shutdown_timeout_ms),
             read_fetch_timeout: std::time::Duration::from_millis(options.read_fetch_timeout_ms),
-            // NFS clients use inode numbers as stable file IDs; evicting an
-            // inode the client still holds would surface as NFS3ERR_STALE on
-            // its next RPC. The eviction safety hooks (forget / inval_entry)
-            // only exist on the FUSE side, so force the limit off here.
             inode_soft_limit: if is_nfs { 0 } else { options.inode_soft_limit },
             lru_sweep_interval: std::time::Duration::from_millis(options.lru_sweep_interval_ms),
         },
