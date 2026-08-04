@@ -116,6 +116,7 @@ repo_to_name() {
 
 # Build mount options string for a backend binary
 build_mount_options() {
+    local backend="$1"
     local opts=()
 
     opts+=("--token-file" "$TOKEN_DIR/hf-token")
@@ -330,16 +331,23 @@ download_binary() {
     local os
     os=$(uname -s | tr '[:upper:]' '[:lower:]')
 
-    case "$arch" in
-        x86_64) arch="x86_64" ;;
-        aarch64|arm64) arch="aarch64" ;;
-        *) die "Unsupported architecture: $arch" ;;
-    esac
-
     case "$os" in
         linux) os="linux" ;;
         darwin) os="apple-darwin" ;;
         *) die "Unsupported OS: $os" ;;
+    esac
+
+    case "$arch" in
+        x86_64|amd64) arch="x86_64" ;;
+        aarch64) arch="aarch64" ;;
+        arm64)
+            if [[ "$os" == "apple-darwin" ]]; then
+                arch="arm64"
+            else
+                arch="aarch64"
+            fi
+            ;;
+        *) die "Unsupported architecture: $arch" ;;
     esac
 
     local tag="v${HF_MOUNT_VERSION}"
@@ -469,7 +477,6 @@ setup_hf_token() {
 setup_cache() {
     log "Setting up cache directory..."
 
-    mkdir -p "$CACHE_DIR"
     chown "$HF_MOUNT_USER:$HF_MOUNT_GROUP" "$CACHE_DIR"
 
     log "Cache directory ready at $CACHE_DIR (max size: $CACHE_SIZE bytes ~ $(numfmt --to=iec-i --suffix=B "$CACHE_SIZE" 2>/dev/null || echo "$CACHE_SIZE bytes"))"
