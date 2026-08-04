@@ -409,10 +409,16 @@ setup_directories() {
     )
 
     for dir in "${dirs[@]}"; do
+        # Only roll back directories this invocation created, so re-runs never
+        # tear down pre-existing mounts/cache/state owned by other services.
+        local preexisted=false
+        [[ -e "$dir" ]] && preexisted=true
+
         mkdir -p "$dir"
         chown "$HF_MOUNT_USER:$HF_MOUNT_GROUP" "$dir"
         chmod 755 "$dir"
-        ROLLBACK_DIRS+=("$dir")
+
+        [[ "$preexisted" != "true" ]] && ROLLBACK_DIRS+=("$dir")
     done
 
     # Cache subdirectory for xorb chunks
