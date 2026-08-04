@@ -194,6 +194,19 @@ pub struct MountOptions {
     #[arg(long, default_value_t = 45_000)]
     pub flush_shutdown_timeout_ms: u64,
 
+    /// Enable VPS-optimized defaults for model hosting workloads.
+    ///
+    /// When set, the following defaults are enforced as hard minimums/maximums,
+    /// overriding any explicitly-provided conflicting values:
+    /// - cache_size: at least 50 GB
+    /// - poll_interval_secs: at most 10 s
+    /// - metadata_ttl_ms: at most 5 s
+    /// - flush_shutdown_timeout_ms: at least 120 s
+    /// - poll_listing_concurrency: at least 8
+    /// - advanced_writes: always enabled (cannot be disabled with --vps-mode)
+    #[arg(long, default_value_t = false)]
+    pub vps_mode: bool,
+
     /// Disable filtering of OS junk files (.DS_Store, Thumbs.db, etc.).
     /// By default these files are rejected on create/mkdir/rename.
     #[arg(long, default_value_t = false)]
@@ -226,6 +239,23 @@ pub struct MountOptions {
     /// Writes are never pushed to remote.
     #[arg(long, default_value_t = false)]
     pub overlay: bool,
+}
+
+impl MountOptions {
+    /// Apply VPS-optimized defaults when --vps-mode is enabled.
+    ///
+    /// Enforces hard minimums/maximums that override conflicting user-supplied
+    /// values, and always enables `advanced_writes`.
+    fn apply_vps_mode_defaults(&mut self) {
+        if self.vps_mode {
+            self.cache_size = self.cache_size.max(50_000_000_000);
+            self.poll_interval_secs = self.poll_interval_secs.min(10);
+            self.metadata_ttl_ms = self.metadata_ttl_ms.min(5_000);
+            self.flush_shutdown_timeout_ms = self.flush_shutdown_timeout_ms.max(120_000);
+            self.poll_listing_concurrency = self.poll_listing_concurrency.max(8);
+            self.advanced_writes = true;
+        }
+    }
 }
 
 /// CLI args for the foreground FUSE/NFS binaries.
@@ -372,6 +402,9 @@ pub fn build_with_runtime(
             )
         }
     };
+
+    let mut options = options;
+    options.apply_vps_mode_defaults();
 
     let backend = if is_nfs { "nfs" } else { "fuse" };
     let hub_client = runtime.block_on(async {
@@ -647,4 +680,79 @@ fn build_cas_config(
         )
         .unwrap_or_else(|e| panic!("Failed to build TranslatorConfig: {e}")),
     )
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_options() -> MountOptions {
+        Args::parse_from(["hf-mount", "bucket", "user/bucket", "/mnt/models"]).options
+    }
+
+    #[test]
+    fn vps_mode_enforces_minimums_and_maximums() {
+        let mut options = default_options();
+        options.vps_mode = true;
+        // Values below minimums / above maximums — should be clamped.
+        options.cache_size = 10_000_000_000; // 10 GB, below 50 GB minimum
+        options.poll_interval_secs = 30; // above 10 s maximum
+        options.metadata_ttl_ms = 10_000; // above 5 s maximum
+        options.flush_shutdown_timeout_ms = 45_000; // below 120 s minimum
+        options.poll_listing_concurrency = 4; // below 8 minimum
+        options.advanced_writes = false; // should be forced true
+
+        options.apply_vps_mode_defaults();
+
+        assert_eq!(options.cache_size, 50_000_000_000);
+        assert_eq!(options.poll_interval_secs, 10);
+        assert_eq!(options.metadata_ttl_ms, 5_000);
+        assert_eq!(options.flush_shutdown_timeout_ms, 120_000);
+        assert_eq!(options.poll_listing_concurrency, 8);
+        assert!(options.advanced_writes);
+    }
+
+    #[test]
+    fn vps_mode_preserves_values_already_satisfying_bounds() {
+        let mut options = default_options();
+        options.vps_mode = true;
+        options.cache_size = 100_000_000_000; // above 50 GB
+        options.poll_interval_secs = 5; // below 10 s maximum
+        options.metadata_ttl_ms = 2_000; // below 5 s maximum
+        options.flush_shutdown_timeout_ms = 200_000; // above 120 s minimum
+        options.poll_listing_concurrency = 16; // above 8 minimum
+        options.advanced_writes = true;
+
+        options.apply_vps_mode_defaults();
+
+        assert_eq!(options.cache_size, 100_000_000_000);
+        assert_eq!(options.poll_interval_secs, 5);
+        assert_eq!(options.metadata_ttl_ms, 2_000);
+        assert_eq!(options.flush_shutdown_timeout_ms, 200_000);
+        assert_eq!(options.poll_listing_concurrency, 16);
+        assert!(options.advanced_writes);
+    }
+
+    #[test]
+    fn vps_mode_disabled_preserves_user_values() {
+        let mut options = default_options();
+        options.vps_mode = false;
+        options.cache_size = 10_000_000_000;
+        options.poll_interval_secs = 30;
+        options.metadata_ttl_ms = 10_000;
+        options.flush_shutdown_timeout_ms = 45_000;
+        options.poll_listing_concurrency = 4;
+        options.advanced_writes = false;
+
+        options.apply_vps_mode_defaults();
+
+        assert_eq!(options.cache_size, 10_000_000_000);
+        assert_eq!(options.poll_interval_secs, 30);
+        assert_eq!(options.metadata_ttl_ms, 10_000);
+        assert_eq!(options.flush_shutdown_timeout_ms, 45_000);
+        assert_eq!(options.poll_listing_concurrency, 4);
+        assert!(!options.advanced_writes);
+    }
 }
