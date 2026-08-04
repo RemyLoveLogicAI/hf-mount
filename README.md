@@ -398,10 +398,10 @@ hf-mount is designed to run on VPS instances for model hosting workloads. This s
 
 4. **Mount a model** using VPS-optimized defaults:
 
-   ```bash
-   hf-mount start --vps-mode --hf-token $(cat /etc/hf-mount/token) \
-     repo openai/gpt-oss-20b /mnt/models
-   ```
+    ```bash
+    hf-mount start --vps-mode --token-file /etc/hf-mount/token \
+      repo openai/gpt-oss-20b /mnt/models
+    ```
 
    The `--vps-mode` flag automatically sets:
    - Cache size: 50 GB (vs. default 10 GB)
@@ -438,6 +438,8 @@ For production VPS deployments, run hf-mount as a systemd service. Example unit 
 
 **Single mount (non-template):**
 
+**NFS backend (recommended, default):**
+
 ```ini
 [Unit]
 Description=hf-mount daemon for Hugging Face model storage
@@ -450,34 +452,9 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 
-# Environment file with mount configuration.
-# Copy this file's example to /etc/hf-mount/hf-mount.env and customize:
-#
-# The NFS backend is the default (no /dev/fuse required). To use the FUSE
-# backend instead (requires /dev/fuse and fuse3), set HF_MOUNT_USE_FUSE.
-#
-#   HF_MOUNT_USE_FUSE=no
-#   HF_MOUNT_SOURCE_TYPE=repo
-#   HF_MOUNT_SOURCE_ID=openai/gpt2
-#   HF_MOUNT_POINT=/mnt/hf-mount
-#   HF_MOUNT_REVISION=main
-#   HF_MOUNT_TOKEN_FILE=/etc/hf-mount/token
-#   HF_MOUNT_CACHE_DIR=/var/cache/hf-mount
-#   HF_MOUNT_CACHE_SIZE=50000000000
-#   HF_MOUNT_METADATA_TTL_MS=5000
-#   HF_MOUNT_POLL_INTERVAL_SECS=10
-#   HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS=120000
-#   HF_MOUNT_READ_ONLY=false
-#   HF_MOUNT_ADVANCED_WRITES=true
-#   HF_MOUNT_OVERLAY=false
-#   HF_MOUNT_MAX_THREADS=16
-#   HF_MOUNT_DIRECT_IO=false
-
 EnvironmentFile=/etc/hf-mount/hf-mount.env
 ExecStart=/usr/local/bin/hf-mount start \
   --vps-mode \
-  ${HF_MOUNT_USE_FUSE:+--fuse} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT} \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
   --cache-dir ${HF_MOUNT_CACHE_DIR} \
   --cache-size ${HF_MOUNT_CACHE_SIZE} \
@@ -486,7 +463,41 @@ ExecStart=/usr/local/bin/hf-mount start \
   --flush-shutdown-timeout-ms ${HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS} \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
-  --overlay ${HF_MOUNT_OVERLAY}
+  --overlay ${HF_MOUNT_OVERLAY} \
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**FUSE backend:**
+
+```ini
+[Unit]
+Description=hf-mount daemon for Hugging Face model storage (FUSE)
+Documentation=https://github.com/huggingface/hf-mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+
+EnvironmentFile=/etc/hf-mount/hf-mount.env
+ExecStart=/usr/local/bin/hf-mount start \
+  --vps-mode \
+  --fuse \
+  --token-file ${HF_MOUNT_TOKEN_FILE} \
+  --cache-dir ${HF_MOUNT_CACHE_DIR} \
+  --cache-size ${HF_MOUNT_CACHE_SIZE} \
+  --metadata-ttl-ms ${HF_MOUNT_METADATA_TTL_MS} \
+  --poll-interval-secs ${HF_MOUNT_POLL_INTERVAL_SECS} \
+  --flush-shutdown-timeout-ms ${HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS} \
+  --read-only ${HF_MOUNT_READ_ONLY} \
+  --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
+  --overlay ${HF_MOUNT_OVERLAY} \
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
 
 [Install]
 WantedBy=multi-user.target
@@ -494,7 +505,9 @@ WantedBy=multi-user.target
 
 **Per-mount template (for multiple models):**
 
-The `hf-mount@.service` template lets you run separate mount instances per model:
+The `hf-mount@.service` template lets you run separate mount instances per model.
+
+**NFS backend template (recommended, default):**
 
 ```ini
 [Unit]
@@ -509,8 +522,6 @@ RestartSec=5
 EnvironmentFile=/etc/hf-mount/hf-mount-%i.env
 ExecStart=/usr/local/bin/hf-mount start \
   --vps-mode \
-  ${HF_MOUNT_USE_FUSE:+--fuse} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT} \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
   --cache-dir ${HF_MOUNT_CACHE_DIR} \
   --cache-size ${HF_MOUNT_CACHE_SIZE} \
@@ -519,14 +530,61 @@ ExecStart=/usr/local/bin/hf-mount start \
   --flush-shutdown-timeout-ms ${HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS} \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
-  --overlay ${HF_MOUNT_OVERLAY}
+  --overlay ${HF_MOUNT_OVERLAY} \
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Enable and start:
+**FUSE backend template:**
 
+```ini
+[Unit]
+Description=hf-mount daemon for %i (FUSE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/etc/hf-mount/hf-mount-%i.env
+ExecStart=/usr/local/bin/hf-mount start \
+  --vps-mode \
+  --fuse \
+  --token-file ${HF_MOUNT_TOKEN_FILE} \
+  --cache-dir ${HF_MOUNT_CACHE_DIR} \
+  --cache-size ${HF_MOUNT_CACHE_SIZE} \
+  --metadata-ttl-ms ${HF_MOUNT_METADATA_TTL_MS} \
+  --poll-interval-secs ${HF_MOUNT_POLL_INTERVAL_SECS} \
+  --flush-shutdown-timeout-ms ${HF_MOUNT_FLUSH_SHUTDOWN_TIMEOUT_MS} \
+  --read-only ${HF_MOUNT_READ_ONLY} \
+  --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
+  --overlay ${HF_MOUNT_OVERLAY} \
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save the unit files and enable them:
+
+**NFS backend (default):**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable hf-mount.service
+sudo systemctl start hf-mount.service
+```
+
+**FUSE backend:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable hf-mount-fuse.service
+sudo systemctl start hf-mount-fuse.service
+```
+
+**Template (per-model):**
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable hf-mount@model.service
