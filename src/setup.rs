@@ -64,6 +64,23 @@ impl Source {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+struct VpsDefaults {
+    cache_size: u64,
+    poll_interval_secs: u64,
+    metadata_ttl_ms: u64,
+    flush_shutdown_timeout_ms: u64,
+    poll_listing_concurrency: u32,
+}
+
+const VPS_DEFAULTS: VpsDefaults = VpsDefaults {
+    cache_size: 50_000_000_000,
+    poll_interval_secs: 10,
+    metadata_ttl_ms: 5_000,
+    flush_shutdown_timeout_ms: 120_000,
+    poll_listing_concurrency: 8,
+};
+
 /// Mount options shared across all binaries (FUSE, NFS, daemon).
 #[derive(clap::Args)]
 pub struct MountOptions {
@@ -101,12 +118,12 @@ pub struct MountOptions {
 
     /// Use staging files + async flush for writes (supports random writes and seek).
     /// Default mode is append-only with synchronous close.
-    #[arg(long, default_value_t = false)]
-    pub advanced_writes: bool,
+    #[arg(long)]
+    pub advanced_writes: Option<bool>,
 
     /// Interval in seconds for polling remote changes (0 to disable).
-    #[arg(long, default_value_t = 30)]
-    pub poll_interval_secs: u64,
+    #[arg(long)]
+    pub poll_interval_secs: Option<u64>,
 
     /// Maximum number of concurrent tree-listing requests per poll round.
     /// Each loaded directory prefix issues one Hub API request; this cap
@@ -114,12 +131,12 @@ pub struct MountOptions {
     /// and is the main knob to throttle hf-mount's load on the Hub `/api`
     /// endpoint. Lower it in shared environments (e.g. Spaces) where many
     /// mounts poll in parallel.
-    #[arg(long, default_value_t = 4, value_parser = clap::value_parser!(u32).range(1..))]
-    pub poll_listing_concurrency: u32,
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub poll_listing_concurrency: Option<u32>,
 
     /// Maximum size in bytes for the on-disk chunk cache.
-    #[arg(long, default_value_t = 10_000_000_000)]
-    pub cache_size: u64,
+    #[arg(long)]
+    pub cache_size: Option<u64>,
 
     /// Maximum size in bytes for staging files (advanced writes).
     /// When exceeded, flushed staging files are garbage-collected to reclaim
@@ -153,8 +170,8 @@ pub struct MountOptions {
     /// give fresher metadata but increase latency on directory traversals
     /// (e.g. `du`, `find`, `ls -lR`) since each file lookup triggers a
     /// HEAD request after the TTL expires.
-    #[arg(long, default_value_t = 10_000)]
-    pub metadata_ttl_ms: u64,
+    #[arg(long)]
+    pub metadata_ttl_ms: Option<u64>,
 
     /// Always HEAD on every lookup (skip in-memory TTL cache).
     #[arg(long, default_value_t = false)]
@@ -191,8 +208,8 @@ pub struct MountOptions {
     /// below the pod's terminationGracePeriodSeconds: an unbounded drain on a
     /// slow Hub/CAS backend keeps the FUSE connection alive past grace, leaving
     /// processes blocked on the mount unkillable and stranding the pod.
-    #[arg(long, default_value_t = 45_000)]
-    pub flush_shutdown_timeout_ms: u64,
+    #[arg(long)]
+    pub flush_shutdown_timeout_ms: Option<u64>,
 
     /// Disable filtering of OS junk files (.DS_Store, Thumbs.db, etc.).
     /// By default these files are rejected on create/mkdir/rename.
@@ -430,25 +447,24 @@ pub fn build_with_runtime(
     let xet_ctx = XetContext::default().expect("Failed to create XetContext");
     let cas_config = build_cas_config(&xet_ctx, &runtime, &refresher);
 
-    // VPS mode: apply optimized defaults for model hosting workloads
-    let poll_interval_secs = if options.vps_mode {
-        10
-    } else {
-        options.poll_interval_secs
-    };
-    let metadata_ttl_ms = if options.vps_mode { 5_000 } else { options.metadata_ttl_ms };
-    let cache_size = if options.vps_mode {
-        50_000_000_000
-    } else {
-        options.cache_size
-    };
-    let flush_shutdown_timeout_ms = if options.vps_mode {
-        120_000
-    } else {
-        options.flush_shutdown_timeout_ms
-    };
-    let poll_listing_concurrency = if options.vps_mode { 8 } else { options.poll_listing_concurrency };
-    let advanced_writes_flag = options.advanced_writes || options.vps_mode;
+    // VPS mode: apply optimized defaults for model hosting workloads,
+    // but only when the corresponding option was not explicitly set.
+    let poll_interval_secs = options
+        .poll_interval_secs
+        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.poll_interval_secs } else { 30 });
+    let metadata_ttl_ms = options
+        .metadata_ttl_ms
+        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.metadata_ttl_ms } else { 10_000 });
+    let cache_size = options
+        .cache_size
+        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.cache_size } else { 10_000_000_000 });
+    let flush_shutdown_timeout_ms = options
+        .flush_shutdown_timeout_ms
+        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.flush_shutdown_timeout_ms } else { 45_000 });
+    let poll_listing_concurrency = options
+        .poll_listing_concurrency
+        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.poll_listing_concurrency } else { 4 });
+    let advanced_writes_flag = options.advanced_writes.unwrap_or(false) || options.vps_mode;
 
     // Ensure cache directory exists and is writable (needed for staging even without chunk cache).
     std::fs::create_dir_all(&options.cache_dir)
@@ -626,7 +642,7 @@ pub fn build_with_runtime(
         direct_io: options.direct_io,
         metadata_ttl,
         max_threads: options.max_threads,
-        metadata_ttl_ms: options.metadata_ttl_ms,
+        metadata_ttl_ms,
         fuse_owner_only: options.fuse_owner_only,
     }
 }

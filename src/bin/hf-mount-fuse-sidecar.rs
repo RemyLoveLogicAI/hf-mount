@@ -178,7 +178,7 @@ fn main() {
         let flush_secs = grace.saturating_sub(10).max(5);
         let watchdog_secs = grace.saturating_sub(5).max(flush_secs + 2);
         for mount in &mut pending {
-            mount.mount_args.options.flush_shutdown_timeout_ms = flush_secs * 1_000;
+            mount.mount_args.options.flush_shutdown_timeout_ms = Some(flush_secs * 1_000);
         }
         info!(
             "Termination grace {}s: flush drain bounded to {}s, hard-exit watchdog at {}s",
