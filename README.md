@@ -145,7 +145,7 @@ Logs are written to `~/.hf-mount/logs/`. PID files are stored in `~/.hf-mount/pi
 By default, `hf-mount` uses NFS. Pass `--fuse` for tighter kernel integration (page cache invalidation, per-file metadata revalidation). Requires `fuse3` on Linux or [macFUSE](https://osxfuse.github.io/) on macOS.
 
 ```bash
-hf-mount start --fuse --hf-token $HF_TOKEN bucket myuser/my-bucket /mnt/data
+hf-mount start --fuse --token-file /etc/hf-mount/token bucket myuser/my-bucket /mnt/data
 ```
 
 ### Foreground mode
@@ -154,7 +154,7 @@ For scripts, containers, or debugging, use the backend binaries directly (they r
 
 ```bash
 hf-mount-nfs repo gpt2 /tmp/gpt2
-hf-mount-fuse --hf-token $HF_TOKEN bucket myuser/my-bucket /mnt/data
+hf-mount-fuse --token-file /etc/hf-mount/token bucket myuser/my-bucket /mnt/data
 ```
 
 ### macOS: launch as a daemon with launchd
