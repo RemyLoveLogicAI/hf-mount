@@ -360,10 +360,10 @@ hf-mount is designed to run as a long-lived daemon on VPS instances, containers,
 ```bash
 # Install from source or download a release binary
 # Then mount a model repo with VPS-optimized defaults:
-hf-mount start --vps-mode --hf-token $HF_TOKEN repo openai/gpt-oss-20b /mnt/model
+hf-mount start --vps-mode --token-file /etc/hf-mount/token repo openai/gpt-oss-20b /mnt/model
 
 # Or for a read-write bucket:
-hf-mount start --vps-mode --hf-token $HF_TOKEN bucket myorg/my-bucket /mnt/data
+hf-mount start --vps-mode --token-file /etc/hf-mount/token bucket myorg/my-bucket /mnt/data
 ```
 
 ### VPS-optimized mount options
@@ -384,7 +384,7 @@ Model hosting on a dedicated VPS benefits from tuning four knobs:
 Pass `--vps-mode` to apply all of the above in one shot:
 
 ```bash
-hf-mount start --vps-mode --hf-token $HF_TOKEN repo meta-llama/Llama-3-8B /mnt/llama
+hf-mount start --vps-mode --token-file /etc/hf-mount/token repo meta-llama/Llama-3-8B /mnt/llama
 ```
 
 This is equivalent to:
@@ -397,7 +397,7 @@ hf-mount start \
   --flush-shutdown-timeout-ms 120000 \
   --poll-listing-concurrency 8 \
   --advanced-writes \
-  --hf-token $HF_TOKEN \
+--token-file /etc/hf-mount/token \
   repo meta-llama/Llama-3-8B /mnt/llama
 ```
 
@@ -506,7 +506,7 @@ hf-mount's NFS backend exports the mounted repo/bucket as an NFS server on `127.
 1. On the server VPS, mount the model with hf-mount (NFS backend, default):
 
    ```bash
-   hf-mount start --vps-mode --hf-token $HF_TOKEN repo meta-llama/Llama-3-8B /mnt/llama
+hf-mount start --vps-mode --token-file /etc/hf-mount/token repo meta-llama/Llama-3-8B /mnt/llama
    ```
 
 2. Install and start a system NFS server on the same VPS, exporting `/mnt/llama`:
@@ -537,7 +537,7 @@ When each VPS has its own local disk but you want a shared remote view with per-
 
 ```bash
 # On each VPS independently:
-hf-mount start --vps-mode --overlay --hf-token $HF_TOKEN \
+hf-mount start --vps-mode --overlay --token-file /etc/hf-mount/token \
   repo meta-llama/Llama-3-8B /mnt/llama
 ```
 
@@ -547,10 +547,10 @@ Each VPS reads from the same remote repo but writes compiled artifacts, torch.co
 
 ```bash
 # Producer: regular bucket mount, writes compiled artifacts to the bucket
-hf-mount start --hf-token $HF_TOKEN bucket myorg/torch-compile-cache "$TORCHINDUCTOR_CACHE_DIR"
+hf-mount start --token-file /etc/hf-mount/token bucket myorg/torch-compile-cache "$TORCHINDUCTOR_CACHE_DIR"
 
 # Consumers: overlay mount, reads from bucket, compiles locally on miss
-hf-mount start --vps-mode --overlay --hf-token $HF_TOKEN \
+hf-mount start --vps-mode --overlay --token-file /etc/hf-mount/token \
   bucket myorg/torch-compile-cache "$TORCHINDUCTOR_CACHE_DIR"
 ```
 
