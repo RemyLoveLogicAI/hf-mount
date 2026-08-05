@@ -188,7 +188,7 @@ fn main() {
     } else {
         pending
             .iter()
-            .map(|m| m.mount_args.options.flush_shutdown_timeout_ms)
+            .filter_map(|m| m.mount_args.options.flush_shutdown_timeout_ms)
             .max()
             .unwrap_or(45_000)
             + 10_000

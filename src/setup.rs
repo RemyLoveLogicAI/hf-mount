@@ -449,21 +449,31 @@ pub fn build_with_runtime(
 
     // VPS mode: apply optimized defaults for model hosting workloads,
     // but only when the corresponding option was not explicitly set.
-    let poll_interval_secs = options
-        .poll_interval_secs
-        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.poll_interval_secs } else { 30 });
-    let metadata_ttl_ms = options
-        .metadata_ttl_ms
-        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.metadata_ttl_ms } else { 10_000 });
-    let cache_size = options
-        .cache_size
-        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.cache_size } else { 10_000_000_000 });
-    let flush_shutdown_timeout_ms = options
-        .flush_shutdown_timeout_ms
-        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.flush_shutdown_timeout_ms } else { 45_000 });
-    let poll_listing_concurrency = options
-        .poll_listing_concurrency
-        .unwrap_or(if options.vps_mode { VPS_DEFAULTS.poll_listing_concurrency } else { 4 });
+    let poll_interval_secs = options.poll_interval_secs.unwrap_or(if options.vps_mode {
+        VPS_DEFAULTS.poll_interval_secs
+    } else {
+        30
+    });
+    let metadata_ttl_ms = options.metadata_ttl_ms.unwrap_or(if options.vps_mode {
+        VPS_DEFAULTS.metadata_ttl_ms
+    } else {
+        10_000
+    });
+    let cache_size = options.cache_size.unwrap_or(if options.vps_mode {
+        VPS_DEFAULTS.cache_size
+    } else {
+        10_000_000_000
+    });
+    let flush_shutdown_timeout_ms = options.flush_shutdown_timeout_ms.unwrap_or(if options.vps_mode {
+        VPS_DEFAULTS.flush_shutdown_timeout_ms
+    } else {
+        45_000
+    });
+    let poll_listing_concurrency = options.poll_listing_concurrency.unwrap_or(if options.vps_mode {
+        VPS_DEFAULTS.poll_listing_concurrency
+    } else {
+        4
+    });
     let advanced_writes_flag = options.advanced_writes.unwrap_or(false) || options.vps_mode;
 
     // Ensure cache directory exists and is writable (needed for staging even without chunk cache).
