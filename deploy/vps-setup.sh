@@ -615,8 +615,8 @@ create_vps_model_mount() {
 # vps-model-mount — Quickly mount a HuggingFace model repo on VPS
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_DIR="/etc/systemd/system"
+INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 MOUNT_BASE_DIR="${MOUNT_BASE_DIR:-/mnt/models}"
 CACHE_DIR="${CACHE_DIR:-/var/cache/hf-mount}"
 STATE_DIR="${STATE_DIR:-/var/lib/hf-mount}"
@@ -629,7 +629,6 @@ POLL_LISTING_CONCURRENCY="${POLL_LISTING_CONCURRENCY:-8}"
 METADATA_TTL_MS="${METADATA_TTL_MS:-5000}"
 FLUSH_SHUTDOWN_TIMEOUT_MS="${FLUSH_SHUTDOWN_TIMEOUT_MS:-120000}"
 ADVANCED_WRITES="${ADVANCED_WRITES:-true}"
-READ_ONLY="${READ_ONLY:-true}"
 
 usage() {
     cat <<EOF
