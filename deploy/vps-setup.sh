@@ -109,14 +109,7 @@ die() {
     exit 1
 }
 
-human_size() {
-    local bytes="$1"
-    if command -v numfmt >/dev/null 2>&1; then
-        numfmt --to=iec-i --suffix=B "$bytes" 2>/dev/null || echo "${bytes} bytes"
-    else
-        echo "${bytes} bytes"
-    fi
-}
+human_size() { local bytes="$1"; command -v numfmt >/dev/null 2>&1 && numfmt --to=iec-i --suffix=B "$bytes" 2>/dev/null || echo "${bytes} bytes"; }
 
 # Convert repo ID to safe service/mount name
 repo_to_name() {
