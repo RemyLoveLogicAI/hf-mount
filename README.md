@@ -453,7 +453,7 @@ Restart=on-failure
 RestartSec=5
 
 EnvironmentFile=/etc/hf-mount/hf-mount.env
-ExecStart=/usr/local/bin/hf-mount start \
+ExecStart=/bin/sh -c '/usr/local/bin/hf-mount start \
   --vps-mode \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
   --cache-dir ${HF_MOUNT_CACHE_DIR} \
@@ -464,7 +464,7 @@ ExecStart=/usr/local/bin/hf-mount start \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
   --overlay ${HF_MOUNT_OVERLAY} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}'
 
 [Install]
 WantedBy=multi-user.target
@@ -485,7 +485,7 @@ Restart=on-failure
 RestartSec=5
 
 EnvironmentFile=/etc/hf-mount/hf-mount.env
-ExecStart=/usr/local/bin/hf-mount start \
+ExecStart=/bin/sh -c '/usr/local/bin/hf-mount start \
   --vps-mode \
   --fuse \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
@@ -497,7 +497,7 @@ ExecStart=/usr/local/bin/hf-mount start \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
   --overlay ${HF_MOUNT_OVERLAY} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}'
 
 [Install]
 WantedBy=multi-user.target
@@ -520,7 +520,7 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 EnvironmentFile=/etc/hf-mount/hf-mount-%i.env
-ExecStart=/usr/local/bin/hf-mount start \
+ExecStart=/bin/sh -c '/usr/local/bin/hf-mount start \
   --vps-mode \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
   --cache-dir ${HF_MOUNT_CACHE_DIR} \
@@ -531,7 +531,7 @@ ExecStart=/usr/local/bin/hf-mount start \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
   --overlay ${HF_MOUNT_OVERLAY} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}'
 
 [Install]
 WantedBy=multi-user.target
@@ -550,7 +550,7 @@ Type=simple
 Restart=on-failure
 RestartSec=5
 EnvironmentFile=/etc/hf-mount/hf-mount-%i.env
-ExecStart=/usr/local/bin/hf-mount start \
+ExecStart=/bin/sh -c '/usr/local/bin/hf-mount start \
   --vps-mode \
   --fuse \
   --token-file ${HF_MOUNT_TOKEN_FILE} \
@@ -562,7 +562,7 @@ ExecStart=/usr/local/bin/hf-mount start \
   --read-only ${HF_MOUNT_READ_ONLY} \
   --advanced-writes ${HF_MOUNT_ADVANCED_WRITES} \
   --overlay ${HF_MOUNT_OVERLAY} \
-  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}
+  ${HF_MOUNT_SOURCE_TYPE} ${HF_MOUNT_SOURCE_ID} ${HF_MOUNT_POINT}'
 
 [Install]
 WantedBy=multi-user.target
