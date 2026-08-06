@@ -372,11 +372,15 @@ download_binary() {
             local checksum_url="${base_url}/${bin}-${arch}-${os}.sha256"
             if curl -fsSL "$checksum_url" -o "$tmpdir/${bin}.sha256" 2>/dev/null; then
                 if command -v sha256sum >/dev/null 2>&1; then
-                    (cd "$tmpdir" && sha256sum -c "${bin}.sha256" 2>/dev/null) || {
+                    local expected
+                    expected=$(awk '{print $1}' "$tmpdir/${bin}.sha256")
+                    local actual
+                    actual=$(sha256sum "$tmpdir/${bin}" | awk '{print $1}')
+                    if [[ "$expected" != "$actual" ]]; then
                         log "Warning: Checksum verification failed for ${bin}, removing"
                         rm -f "$tmpdir/${bin}" "$tmpdir/${bin}.sha256"
                         continue
-                    }
+                    fi
                 elif command -v shasum >/dev/null 2>&1; then
                     local expected
                     expected=$(awk '{print $1}' "$tmpdir/${bin}.sha256")
