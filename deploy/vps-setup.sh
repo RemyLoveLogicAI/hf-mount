@@ -109,6 +109,15 @@ die() {
     exit 1
 }
 
+human_size() {
+    local bytes="$1"
+    if command -v numfmt >/dev/null 2>&1; then
+        numfmt --to=iec-i --suffix=B "$bytes" 2>/dev/null || echo "${bytes} bytes"
+    else
+        echo "${bytes} bytes"
+    fi
+}
+
 # Convert repo ID to safe service/mount name
 repo_to_name() {
     echo "${1//\//-}"
@@ -116,7 +125,6 @@ repo_to_name() {
 
 # Build mount options string for a backend binary
 build_mount_options() {
-    local backend="$1"
     local opts=()
 
     opts+=("--token-file" "$TOKEN_DIR/hf-token")
@@ -368,6 +376,31 @@ download_binary() {
         log "Downloading ${bin} from $url"
 
         if curl -fsSL "$url" -o "$tmpdir/${bin}"; then
+            local checksum_url="${base_url}/${bin}-${arch}-${os}.sha256"
+            if curl -fsSL "$checksum_url" -o "$tmpdir/${bin}.sha256" 2>/dev/null; then
+                if command -v sha256sum >/dev/null 2>&1; then
+                    (cd "$tmpdir" && sha256sum -c "${bin}.sha256" 2>/dev/null) || {
+                        log "Warning: Checksum verification failed for ${bin}, removing"
+                        rm -f "$tmpdir/${bin}" "$tmpdir/${bin}.sha256"
+                        continue
+                    }
+                elif command -v shasum >/dev/null 2>&1; then
+                    local expected
+                    expected=$(awk '{print $1}' "$tmpdir/${bin}.sha256")
+                    local actual
+                    actual=$(shasum -a 256 "$tmpdir/${bin}" | awk '{print $1}')
+                    if [[ "$expected" != "$actual" ]]; then
+                        log "Warning: Checksum verification failed for ${bin}, removing"
+                        rm -f "$tmpdir/${bin}" "$tmpdir/${bin}.sha256"
+                        continue
+                    fi
+                else
+                    log "Warning: No checksum tool available, skipping verification for ${bin}"
+                fi
+            else
+                log "Warning: Could not download checksum for ${bin}, skipping verification"
+            fi
+
             cp "$tmpdir/${bin}" "$INSTALL_DIR/"
             chmod +x "$INSTALL_DIR/$bin"
             found=$((found + 1))
@@ -479,7 +512,7 @@ setup_cache() {
 
     chown "$HF_MOUNT_USER:$HF_MOUNT_GROUP" "$CACHE_DIR"
 
-    log "Cache directory ready at $CACHE_DIR (max size: $CACHE_SIZE bytes ~ $(numfmt --to=iec-i --suffix=B "$CACHE_SIZE" 2>/dev/null || echo "$CACHE_SIZE bytes"))"
+    log "Cache directory ready at $CACHE_DIR (max size: $(human_size "$CACHE_SIZE"))"
 }
 
 # ─── Step 9: Create Systemd Service ───────────────────────────────────────
@@ -852,7 +885,7 @@ Environment=HOME=${STATE_DIR}
 Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
 ExecStartPre=/bin/mkdir -p ${mount_point}
 ExecStartPre=/bin/chown ${HF_MOUNT_USER}:${HF_MOUNT_GROUP} ${mount_point}
-ExecStart=${SCRIPT_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts[*]}
+ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts[*]}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
 Restart=on-failure
@@ -958,7 +991,7 @@ main() {
     echo "Configuration:"
     echo "  Backend:      ${DEFAULT_BACKEND}"
     echo "  Cache dir:    ${CACHE_DIR}"
-    echo "  Cache size:   $(numfmt --to=iec-i --suffix=B "$CACHE_SIZE" 2>/dev/null || echo "${CACHE_SIZE} bytes")"
+    echo "  Cache size:   $(human_size "$CACHE_SIZE")"
     echo "  Token file:   ${TOKEN_DIR}/hf-token"
     echo "  Binaries:     ${INSTALL_DIR}/"
     echo ""
