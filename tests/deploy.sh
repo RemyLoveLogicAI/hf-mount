@@ -22,7 +22,7 @@ test_no_backend_param() {
 }
 
 test_helper_uses_install_dir() {
-    grep -q 'ExecStart=${INSTALL_DIR}/${backend_bin}' "$DEPLOY_SCRIPT" || {
+    grep -qF "ExecStart=\${INSTALL_DIR}/\${backend_bin}" "$DEPLOY_SCRIPT" || {
         echo "FAIL: helper script still uses SCRIPT_DIR instead of INSTALL_DIR" >&2
         return 1
     }
