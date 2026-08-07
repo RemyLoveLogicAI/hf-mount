@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 
 const VPS_MODE_DEFAULTS: &[(&str, &str)] = &[
+    ("--advanced-writes", ""),
     ("--cache-size", "5000000000"),
     ("--metadata-ttl-ms", "5000"),
     ("--poll-interval-secs", "10"),
@@ -11,7 +12,7 @@ const VPS_MODE_DEFAULTS: &[(&str, &str)] = &[
 
 fn inject_vps_defaults(args: &mut Vec<String>) {
     let has_flag = |args: &[String], flag: &str| -> bool {
-        args.iter().any(|a| a == flag)
+        args.iter().any(|a| a == flag || a.starts_with(&format!("{}=", flag)))
     };
 
     let mut insert_at = 0;
@@ -19,8 +20,10 @@ fn inject_vps_defaults(args: &mut Vec<String>) {
         if !has_flag(args, flag) {
             args.insert(insert_at, flag.to_string());
             insert_at += 1;
-            args.insert(insert_at, value.to_string());
-            insert_at += 1;
+            if !value.is_empty() {
+                args.insert(insert_at, value.to_string());
+                insert_at += 1;
+            }
         }
     }
 }

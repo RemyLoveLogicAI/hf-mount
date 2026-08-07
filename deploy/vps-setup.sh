@@ -56,6 +56,7 @@ READ_ONLY="${READ_ONLY:-true}"
 SERVICES=()
 ROLLBACK_DIRS=()
 CREATED_USER=false
+INSTALLED_BINS=()
 
 cleanup() {
     echo ""
@@ -82,12 +83,10 @@ cleanup() {
         userdel "$HF_MOUNT_USER" 2>/dev/null || true
     fi
 
-    # Remove installed binaries
-    for bin in hf-mount hf-mount-nfs hf-mount-fuse vps-model-mount; do
-        if [[ -f "$INSTALL_DIR/$bin" ]]; then
-            echo "  Removing binary: $INSTALL_DIR/$bin"
-            rm -f "$INSTALL_DIR/$bin"
-        fi
+    # Remove binaries installed by this run only
+    for bin in "${INSTALLED_BINS[@]}"; do
+        echo "  Removing binary: $bin"
+        rm -f "$bin"
     done
 
     systemctl daemon-reload 2>/dev/null || true
@@ -277,6 +276,15 @@ detect_backend() {
 install_hf_mount() {
     log "Installing hf-mount..."
 
+    local -a preexisting=()
+    for bin in hf-mount hf-mount-nfs hf-mount-fuse; do
+        [[ -f "$INSTALL_DIR/$bin" ]] && preexisting+=("$INSTALL_DIR/$bin")
+    done
+
+    if [[ ${#preexisting[@]} -gt 0 ]]; then
+        log "Preexisting binaries: ${preexisting[*]}"
+    fi
+
     # Check if already installed with matching version
     if [[ -x "$INSTALL_DIR/hf-mount" ]]; then
         local current_version
@@ -319,6 +327,10 @@ install_hf_mount() {
     for bin in "${required_bins[@]}"; do
         if [[ ! -x "$INSTALL_DIR/$bin" ]]; then
             die "$INSTALL_DIR/$bin not found after installation"
+        fi
+        # Track newly installed binaries for safe rollback
+        if [[ ! " ${preexisting[*]} " =~ " $INSTALL_DIR/$bin " ]]; then
+            INSTALLED_BINS+=("$INSTALL_DIR/$bin")
         fi
     done
 
@@ -605,25 +617,26 @@ create_vps_model_mount() {
 
     local helper_path="$INSTALL_DIR/vps-model-mount"
 
-    cat > "$helper_path" <<'HELPER_EOF'
+    cat > "$helper_path" <<HELPER_EOF
 #!/usr/bin/env bash
 # vps-model-mount — Quickly mount a HuggingFace model repo on VPS
 set -euo pipefail
 
 SERVICE_DIR="/etc/systemd/system"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
-MOUNT_BASE_DIR="${MOUNT_BASE_DIR:-/mnt/models}"
-CACHE_DIR="${CACHE_DIR:-/var/cache/hf-mount}"
-STATE_DIR="${STATE_DIR:-/var/lib/hf-mount}"
-TOKEN_DIR="${TOKEN_DIR:-/etc/hf-mount}"
-HF_MOUNT_USER="${HF_MOUNT_USER:-hf-mount}"
-HF_MOUNT_GROUP="${HF_MOUNT_GROUP:-hf-mount}"
-CACHE_SIZE="${CACHE_SIZE:-5000000000}"
-POLL_INTERVAL_SECS="${POLL_INTERVAL_SECS:-10}"
-POLL_LISTING_CONCURRENCY="${POLL_LISTING_CONCURRENCY:-8}"
-METADATA_TTL_MS="${METADATA_TTL_MS:-5000}"
-FLUSH_SHUTDOWN_TIMEOUT_MS="${FLUSH_SHUTDOWN_TIMEOUT_MS:-120000}"
-ADVANCED_WRITES="${ADVANCED_WRITES:-true}"
+INSTALL_DIR="__INSTALL_DIR__"
+MOUNT_BASE_DIR="__MOUNT_BASE_DIR__"
+CACHE_DIR="__CACHE_DIR__"
+STATE_DIR="__STATE_DIR__"
+TOKEN_DIR="__TOKEN_DIR__"
+HF_MOUNT_USER="__HF_MOUNT_USER__"
+HF_MOUNT_GROUP="__HF_MOUNT_GROUP__"
+CACHE_SIZE="__CACHE_SIZE__"
+POLL_INTERVAL_SECS="__POLL_INTERVAL_SECS__"
+POLL_LISTING_CONCURRENCY="__POLL_LISTING_CONCURRENCY__"
+METADATA_TTL_MS="__METADATA_TTL_MS__"
+FLUSH_SHUTDOWN_TIMEOUT_MS="__FLUSH_SHUTDOWN_TIMEOUT_MS__"
+ADVANCED_WRITES="__ADVANCED_WRITES__"
+READ_ONLY="__READ_ONLY__"
 
 usage() {
     cat <<EOF
@@ -729,7 +742,7 @@ main() {
 
     local repo=""
     local backend=""
-    local read_only="true"
+    local read_only="${READ_ONLY}"
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -909,8 +922,26 @@ EOF
 main "$@"
 HELPER_EOF
 
+    sed -i \
+        -e "s|__INSTALL_DIR__|${INSTALL_DIR}|g" \
+        -e "s|__MOUNT_BASE_DIR__|${MOUNT_BASE_DIR}|g" \
+        -e "s|__CACHE_DIR__|${CACHE_DIR}|g" \
+        -e "s|__STATE_DIR__|${STATE_DIR}|g" \
+        -e "s|__TOKEN_DIR__|${TOKEN_DIR}|g" \
+        -e "s|__HF_MOUNT_USER__|${HF_MOUNT_USER}|g" \
+        -e "s|__HF_MOUNT_GROUP__|${HF_MOUNT_GROUP}|g" \
+        -e "s|__CACHE_SIZE__|${CACHE_SIZE}|g" \
+        -e "s|__POLL_INTERVAL_SECS__|${POLL_INTERVAL_SECS}|g" \
+        -e "s|__POLL_LISTING_CONCURRENCY__|${POLL_LISTING_CONCURRENCY}|g" \
+        -e "s|__METADATA_TTL_MS__|${METADATA_TTL_MS}|g" \
+        -e "s|__FLUSH_SHUTDOWN_TIMEOUT_MS__|${FLUSH_SHUTDOWN_TIMEOUT_MS}|g" \
+        -e "s|__ADVANCED_WRITES__|${ADVANCED_WRITES}|g" \
+        -e "s|__READ_ONLY__|${READ_ONLY}|g" \
+        "$helper_path"
+
     chmod +x "$helper_path"
     chown root:root "$helper_path"
+    INSTALLED_BINS+=("$helper_path")
 
     log "Helper script installed: $helper_path"
 }
