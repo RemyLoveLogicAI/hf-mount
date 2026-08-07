@@ -2,6 +2,29 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+const VPS_MODE_DEFAULTS: &[(&str, &str)] = &[
+    ("--cache-size", "5000000000"),
+    ("--metadata-ttl-ms", "5000"),
+    ("--poll-interval-secs", "10"),
+    ("--flush-shutdown-timeout-ms", "120000"),
+];
+
+fn inject_vps_defaults(args: &mut Vec<String>) {
+    let has_flag = |args: &[String], flag: &str| -> bool {
+        args.iter().any(|a| a == flag)
+    };
+
+    let mut insert_at = 0;
+    for &(flag, value) in VPS_MODE_DEFAULTS {
+        if !has_flag(args, flag) {
+            args.insert(insert_at, flag.to_string());
+            insert_at += 1;
+            args.insert(insert_at, value.to_string());
+            insert_at += 1;
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(about = "Mount Hugging Face Buckets and repos as local filesystems", version)]
 struct Cli {
@@ -16,6 +39,12 @@ enum Command {
         /// Use FUSE backend instead of NFS (default: NFS)
         #[arg(long)]
         fuse: bool,
+
+        /// Apply VPS-optimized defaults: smaller cache (5 GB), shorter metadata TTL (5 s),
+        /// faster polling (10 s), and longer graceful shutdown timeout (120 s).
+        /// These can still be overridden by passing explicit flags after this one.
+        #[arg(long)]
+        vps_mode: bool,
 
         /// Remaining arguments passed to the backend (hf-mount-nfs or hf-mount-fuse)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -52,8 +81,13 @@ fn main() {
                 }
             }
         }
-        Command::Start { fuse, args } => {
+        Command::Start { fuse, vps_mode, args } => {
             let backend = if fuse { "hf-mount-fuse" } else { "hf-mount-nfs" };
+
+            let mut args = args;
+            if vps_mode {
+                inject_vps_defaults(&mut args);
+            }
 
             // Find the backend binary next to this binary, or in PATH.
             let backend_path = std::env::current_exe()

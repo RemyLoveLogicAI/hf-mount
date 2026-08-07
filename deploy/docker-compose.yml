@@ -1,0 +1,232 @@
+services:
+  hf-mount-nfs:
+    image: hf-mount:latest
+    build: .
+    container_name: hf-mount-nfs
+    restart: unless-stopped
+    volumes:
+      - nfs-model-data:/mnt/models
+      - nfs-hf-mount-cache:/cache
+      - ./hf-token:/run/secrets/hf-token:ro
+    environment:
+      HF_TOKEN_FILE: /run/secrets/hf-token
+      CACHE_SIZE: "5000000000"
+      METADATA_TTL_MS: "5000"
+      POLL_INTERVAL_SECS: "10"
+      POLL_LISTING_CONCURRENCY: "4"
+      CACHE_MODE: "chunk"
+      READ_ONLY: "true"
+      ADVANCED_WRITES: "true"
+      NO_DISK_CACHE: "false"
+      DIRECT_IO: "false"
+      FLUSH_DEBOUNCE_MS: "2000"
+      FLUSH_MAX_BATCH_WINDOW_MS: "30000"
+      FLUSH_SHUTDOWN_TIMEOUT_MS: "120000"
+      READ_FETCH_TIMEOUT_MS: "30000"
+      INODE_SOFT_LIMIT: "0"
+      LRU_SWEEP_INTERVAL_MS: "5000"
+      NO_FILTER_OS_FILES: "false"
+      RUST_LOG: "hf_mount=info"
+    command: >
+      repo openai/gpt-oss-20b /mnt/models
+      --token-file /run/secrets/hf-token
+      --cache-dir /cache
+      --cache-size ${CACHE_SIZE}
+      --metadata-ttl-ms ${METADATA_TTL_MS}
+      --poll-interval-secs ${POLL_INTERVAL_SECS}
+      --poll-listing-concurrency ${POLL_LISTING_CONCURRENCY}
+      --cache-mode ${CACHE_MODE}
+      --read-only ${READ_ONLY}
+      --advanced-writes ${ADVANCED_WRITES}
+      --no-disk-cache ${NO_DISK_CACHE}
+      --direct-io ${DIRECT_IO}
+      --flush-debounce-ms ${FLUSH_DEBOUNCE_MS}
+      --flush-max-batch-window-ms ${FLUSH_MAX_BATCH_WINDOW_MS}
+      --flush-shutdown-timeout-ms ${FLUSH_SHUTDOWN_TIMEOUT_MS}
+      --read-fetch-timeout-ms ${READ_FETCH_TIMEOUT_MS}
+      --inode-soft-limit ${INODE_SOFT_LIMIT}
+      --lru-sweep-interval-ms ${LRU_SWEEP_INTERVAL_MS}
+      --no-filter-os-files ${NO_FILTER_OS_FILES}
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt/models && mountpoint -q /mnt/models"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8g
+        reservations:
+          cpus: "1"
+          memory: 2g
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - no-new-privileges
+    cap_add:
+      - SYS_ADMIN
+
+  hf-mount-fuse:
+    image: hf-mount:latest
+    build: .
+    container_name: hf-mount-fuse
+    restart: unless-stopped
+    volumes:
+      - fuse-model-data:/mnt/models
+      - fuse-hf-mount-cache:/cache
+      - ./hf-token:/run/secrets/hf-token:ro
+    devices:
+      - /dev/fuse
+    environment:
+      HF_TOKEN_FILE: /run/secrets/hf-token
+      CACHE_SIZE: "5000000000"
+      METADATA_TTL_MS: "5000"
+      POLL_INTERVAL_SECS: "10"
+      POLL_LISTING_CONCURRENCY: "4"
+      CACHE_MODE: "chunk"
+      READ_ONLY: "true"
+      ADVANCED_WRITES: "true"
+      NO_DISK_CACHE: "false"
+      DIRECT_IO: "false"
+      MAX_THREADS: "16"
+      FLUSH_DEBOUNCE_MS: "2000"
+      FLUSH_MAX_BATCH_WINDOW_MS: "30000"
+      FLUSH_SHUTDOWN_TIMEOUT_MS: "120000"
+      READ_FETCH_TIMEOUT_MS: "30000"
+      INODE_SOFT_LIMIT: "0"
+      LRU_SWEEP_INTERVAL_MS: "5000"
+      NO_FILTER_OS_FILES: "false"
+      RUST_LOG: "hf_mount=info"
+    command: >
+      repo openai/gpt-oss-20b /mnt/models
+      --fuse
+      --token-file /run/secrets/hf-token
+      --cache-dir /cache
+      --cache-size ${CACHE_SIZE}
+      --metadata-ttl-ms ${METADATA_TTL_MS}
+      --poll-interval-secs ${POLL_INTERVAL_SECS}
+      --poll-listing-concurrency ${POLL_LISTING_CONCURRENCY}
+      --cache-mode ${CACHE_MODE}
+      --read-only ${READ_ONLY}
+      --advanced-writes ${ADVANCED_WRITES}
+      --no-disk-cache ${NO_DISK_CACHE}
+      --direct-io ${DIRECT_IO}
+      --max-threads ${MAX_THREADS}
+      --flush-debounce-ms ${FLUSH_DEBOUNCE_MS}
+      --flush-max-batch-window-ms ${FLUSH_MAX_BATCH_WINDOW_MS}
+      --flush-shutdown-timeout-ms ${FLUSH_SHUTDOWN_TIMEOUT_MS}
+      --read-fetch-timeout-ms ${READ_FETCH_TIMEOUT_MS}
+      --inode-soft-limit ${INODE_SOFT_LIMIT}
+      --lru-sweep-interval-ms ${LRU_SWEEP_INTERVAL_MS}
+      --no-filter-os-files ${NO_FILTER_OS_FILES}
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt/models && mountpoint -q /mnt/models"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8g
+        reservations:
+          cpus: "1"
+          memory: 2g
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - no-new-privileges
+
+  hf-mount-overlay:
+    image: hf-mount:latest
+    build: .
+    container_name: hf-mount-overlay
+    restart: unless-stopped
+    volumes:
+      - overlay-model-data:/mnt/models
+      - overlay-hf-mount-cache:/cache
+      - ./hf-token:/run/secrets/hf-token:ro
+    environment:
+      HF_TOKEN_FILE: /run/secrets/hf-token
+      CACHE_SIZE: "5000000000"
+      METADATA_TTL_MS: "5000"
+      POLL_INTERVAL_SECS: "10"
+      POLL_LISTING_CONCURRENCY: "4"
+      CACHE_MODE: "chunk"
+      READ_ONLY: "false"
+      ADVANCED_WRITES: "true"
+      NO_DISK_CACHE: "false"
+      DIRECT_IO: "false"
+      MAX_THREADS: "16"
+      FLUSH_DEBOUNCE_MS: "2000"
+      FLUSH_MAX_BATCH_WINDOW_MS: "30000"
+      FLUSH_SHUTDOWN_TIMEOUT_MS: "120000"
+      READ_FETCH_TIMEOUT_MS: "30000"
+      INODE_SOFT_LIMIT: "0"
+      LRU_SWEEP_INTERVAL_MS: "5000"
+      NO_FILTER_OS_FILES: "false"
+      RUST_LOG: "hf_mount=info"
+    command: >
+      repo openai/gpt-oss-20b /mnt/models
+      --fuse
+      --token-file /run/secrets/hf-token
+      --cache-dir /cache
+      --cache-size ${CACHE_SIZE}
+      --metadata-ttl-ms ${METADATA_TTL_MS}
+      --poll-interval-secs ${POLL_INTERVAL_SECS}
+      --poll-listing-concurrency ${POLL_LISTING_CONCURRENCY}
+      --cache-mode ${CACHE_MODE}
+      --read-only
+      --overlay
+      --advanced-writes ${ADVANCED_WRITES}
+      --no-disk-cache ${NO_DISK_CACHE}
+      --direct-io ${DIRECT_IO}
+      --max-threads ${MAX_THREADS}
+      --flush-debounce-ms ${FLUSH_DEBOUNCE_MS}
+      --flush-max-batch-window-ms ${FLUSH_MAX_BATCH_WINDOW_MS}
+      --flush-shutdown-timeout-ms ${FLUSH_SHUTDOWN_TIMEOUT_MS}
+      --read-fetch-timeout-ms ${READ_FETCH_TIMEOUT_MS}
+      --inode-soft-limit ${INODE_SOFT_LIMIT}
+      --lru-sweep-interval-ms ${LRU_SWEEP_INTERVAL_MS}
+      --no-filter-os-files ${NO_FILTER_OS_FILES}
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt/models && mountpoint -q /mnt/models"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8g
+        reservations:
+          cpus: "1"
+          memory: 2g
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - no-new-privileges
+
+volumes:
+  nfs-model-data:
+    driver: local
+  nfs-hf-mount-cache:
+    driver: local
+  fuse-model-data:
+    driver: local
+  fuse-hf-mount-cache:
+    driver: local
+  overlay-model-data:
+    driver: local
+  overlay-hf-mount-cache:
+    driver: local
