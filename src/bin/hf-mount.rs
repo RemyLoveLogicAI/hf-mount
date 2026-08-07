@@ -165,3 +165,81 @@ fn exec_backend(backend: &std::path::Path, args: &[String], guard: &hf_mount::da
     // exec replaces the process, so this only returns on error.
     cmd.exec()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn injects_all_defaults_when_no_flags_present() {
+        let mut args = vec![
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let expected = vec![
+            "--advanced-writes",
+            "--cache-size",
+            "5000000000",
+            "--metadata-ttl-ms",
+            "5000",
+            "--poll-interval-secs",
+            "10",
+            "--flush-shutdown-timeout-ms",
+            "120000",
+            "repo",
+            "openai/gpt-oss-20b",
+            "/mnt/models",
+        ];
+        assert_eq!(args, expected);
+    }
+
+    #[test]
+    fn does_not_duplicate_explicit_flags() {
+        let mut args = vec![
+            "--cache-size".to_string(),
+            "1000000000".to_string(),
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let cache_size_count = args.iter().filter(|a| *a == "--cache-size").count();
+        assert_eq!(cache_size_count, 1);
+        let idx = args.iter().position(|a| a == "--cache-size").unwrap();
+        assert_eq!(args[idx + 1], "1000000000");
+    }
+
+    #[test]
+    fn handles_flag_equals_value_form() {
+        let mut args = vec![
+            "--cache-size=1000000000".to_string(),
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let count = args
+            .iter()
+            .filter(|a| *a == "--cache-size" || a.starts_with("--cache-size="))
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn boolean_flag_injected_without_value() {
+        let mut args = vec![
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let idx = args.iter().position(|a| a == "--advanced-writes").unwrap();
+        assert!(idx + 1 >= args.len() || args[idx + 1].starts_with('-'));
+    }
+}

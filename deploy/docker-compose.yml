@@ -1,57 +1,4 @@
 services:
-  hf-mount-nfs:
-    image: hf-mount:latest
-    build: .
-    container_name: hf-mount-nfs
-    restart: unless-stopped
-    volumes:
-      - nfs-model-data:/mnt/models
-      - nfs-hf-mount-cache:/cache
-      - ./hf-token:/run/secrets/hf-token:ro
-    entrypoint: ["sh", "-c"]
-    command: >
-      repo openai/gpt-oss-20b /mnt/models
-      --token-file /run/secrets/hf-token
-      --cache-dir /cache
-      --cache-size ${CACHE_SIZE}
-      --metadata-ttl-ms ${METADATA_TTL_MS}
-      --poll-interval-secs ${POLL_INTERVAL_SECS}
-      --poll-listing-concurrency ${POLL_LISTING_CONCURRENCY}
-      --cache-mode ${CACHE_MODE}
-      ${READ_ONLY:+--read-only}
-      ${ADVANCED_WRITES:+--advanced-writes}
-      ${NO_DISK_CACHE:+--no-disk-cache}
-      ${DIRECT_IO:+--direct-io}
-      --flush-debounce-ms ${FLUSH_DEBOUNCE_MS}
-      --flush-max-batch-window-ms ${FLUSH_MAX_BATCH_WINDOW_MS}
-      --flush-shutdown-timeout-ms ${FLUSH_SHUTDOWN_TIMEOUT_MS}
-      --read-fetch-timeout-ms ${READ_FETCH_TIMEOUT_MS}
-      --inode-soft-limit ${INODE_SOFT_LIMIT}
-      --lru-sweep-interval-ms ${LRU_SWEEP_INTERVAL_MS}
-      ${NO_FILTER_OS_FILES:+--no-filter-os-files}
-    healthcheck:
-      test: ["CMD-SHELL", "test -d /mnt/models && mountpoint -q /mnt/models"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 8g
-        reservations:
-          cpus: "1"
-          memory: 2g
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    security_opt:
-      - no-new-privileges
-    cap_add:
-      - SYS_ADMIN
-
   hf-mount-fuse:
     image: hf-mount:latest
     build: .
@@ -66,7 +13,6 @@ services:
     entrypoint: ["sh", "-c"]
     command: >
       repo openai/gpt-oss-20b /mnt/models
-      --fuse
       --token-file /run/secrets/hf-token
       --cache-dir /cache
       --cache-size ${CACHE_SIZE}
@@ -116,10 +62,11 @@ services:
       - overlay-model-data:/mnt/models
       - overlay-hf-mount-cache:/cache
       - ./hf-token:/run/secrets/hf-token:ro
+    devices:
+      - /dev/fuse
     entrypoint: ["sh", "-c"]
     command: >
       repo openai/gpt-oss-20b /mnt/models
-      --fuse
       --token-file /run/secrets/hf-token
       --cache-dir /cache
       --cache-size ${CACHE_SIZE}
@@ -162,10 +109,6 @@ services:
       - no-new-privileges
 
 volumes:
-  nfs-model-data:
-    driver: local
-  nfs-hf-mount-cache:
-    driver: local
   fuse-model-data:
     driver: local
   fuse-hf-mount-cache:
