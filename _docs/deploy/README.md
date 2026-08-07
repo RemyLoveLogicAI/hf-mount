@@ -4,10 +4,10 @@
 {
   "doc_type": "directory_index",
   "directory_path": "_docs/deploy",
-  "directory_hash": "65bc5d0fde782f8ae01a8a6ee57fa697e8667ee2c167120ebe62b23fbb0ee7bd",
+  "directory_hash": "a16bc9d8d42febfa14eca3199b869824bde5acaa279626e4fb5081421fb3c4bc",
   "file_count": 1,
   "file_hashes": {
-    "vps-setup.sh": "fe6e045c61b3cd22"
+    "vps-setup.sh": "a2adcbd83c945860"
   }
 }
 ```
@@ -20,7 +20,7 @@
 
 # 📁 deploy
 
-> **Purpose:** Contains deployment helpers and scripts for provisioning a VPS, installing the hf-mount tooling, and configuring related systemd services.
+> **Purpose:** Contains deployment-related assets for provisioning and configuring a VPS using an automated shell script.
 > 
 
 ![Organization: Flat](https://img.shields.io/badge/Organization-Flat-blue)
@@ -30,21 +30,20 @@
 
 - [Overview](#overview)
 - [All Files](#all-files)
-- [Dependencies](#dependencies)
 - [Architecture Notes](#architecture-notes)
 
 ---
 
 ## Overview
 
-This directory hosts deployment-level assets used to provision and configure a VPS with the project's hf-mount tooling. At the root level there is a single Bash script, vps-setup.sh, which acts as the deployment helper: it performs installation steps and configures systemd services required to run hf-mount on a newly provisioned virtual private server.
+This directory contains a single shell script at the root level intended to provision and configure a virtual private server (VPS). The root file, vps-setup.sh, is a deployment script whose purpose is to perform VPS setup tasks (install packages, configure system settings, create users, or similar provisioning actions) as indicated by its filename and provided purpose.
 
-The vps-setup.sh script is the orchestration point in this directory. It encapsulates the sequence of commands and configuration edits needed to install hf-mount and register or enable the accompanying systemd service units. In the broader repository, this directory's role is to provide repeatable, documented steps for operators or automation systems to bring a server into a runnable state for the hf-mount tooling by installing binaries, placing configuration, and enabling service management through systemd.
+Because there are no subdirectories, the directory is flat and focused: the single script is the entry point for deployment operations related to a VPS. In the larger system this directory serves as the canonical place to find automated server provisioning logic: developers and operators will look here to run or update the VPS setup procedure. Any orchestration, CI/CD integration, or documentation that depends on VPS provisioning should reference this script directly.
 
 
 ### File Organization
 
-This directory contains a single root-level script (vps-setup.sh). The flat layout reflects a single-purpose deployment helper: all provisioning logic is centralized in one Bash script rather than split across multiple files or subdirectories.
+A single-file flat layout: all deployment logic for VPS provisioning is contained in vps-setup.sh at the root of this directory to make the entry point explicit and easy to execute or reference from automation.
 
 ## 📂 All Files
 
@@ -52,20 +51,10 @@ This directory contains a single root-level script (vps-setup.sh). The flat layo
 | --- | --- |
 | [vps-setup.sh](./vps-setup.sh.md) | 🐚 Shell |
 
-## Dependencies
-
-### External Dependencies
-
-| Dependency | Usage |
-| --- | --- |
-| `bash` | Required to execute vps-setup.sh; the script is written in Bash. |
-| `systemd` | vps-setup.sh configures and manages service units using systemd commands (enable, start, status). |
-| `hf-mount tooling` | The primary software installed and configured by the script; the script provisions and configures hf-mount on the VPS. |
-
 ## Architecture Notes
 
-- Deployment logic is centralized in a single Bash script to provide a repeatable, linear provisioning flow for installing hf-mount and configuring systemd services.
-- System service management is delegated to systemd; the script instantiates or configures unit files and uses systemctl to enable/start services, keeping runtime orchestration handled by the OS service manager.
+- Deployment logic is consolidated into a single shell script to make the VPS provisioning entry point explicit and easy to invoke from CI/CD or manual workflows.
+- Because the directory contains only one script, integration points (e.g., CI jobs or orchestration tools) should call this file directly rather than relying on internal libraries.
 
 ---
 
