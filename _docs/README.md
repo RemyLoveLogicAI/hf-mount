@@ -1,67 +1,111 @@
-[Documentation Home](README.md)
+# 📚 hf-mount Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 1](https://img.shields.io/badge/Files_Documented-1-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-08-07](https://img.shields.io/badge/Last_Updated-2026--08--07-gray)
+
+## 🔗 Quick Links
+
+[📂 deploy](./deploy/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Documentation and operational guidance for provisioning and configuring a VPS to run the project's hf-mount tooling, including deployment helpers and service configuration notes.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> Deployment helpers and an orchestration script to provision a VPS and configure systemd services for running the hf-mount tooling.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Dependencies](#dependencies)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+hf-mount provides deployment-level tooling to bring a virtual private server (VPS) into a runnable state for the hf-mount runtime. The repository focuses on installation, placement of binaries and configuration, and registering/enabling systemd service units so the hf-mount tooling runs under systemd supervision.
+
+The core of the project is an orchestration Bash script (vps-setup.sh) and related deployment assets. vps-setup.sh sequences installation steps, installs or places the hf-mount tooling, edits or installs systemd unit files, and enables or registers those services, providing repeatable, operator-friendly provisioning for new servers.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **deploy** | Contains deployment-level assets and scripts used to provision a VPS, install the hf-mount tooling, and configure systemd services required to run hf-mount. | `bash`, `hf-mount tooling`, `systemd` |
+| **vps-setup.sh** | The orchestration Bash script that performs installation steps, places configuration and binaries, and registers/enables systemd service units to run hf-mount on a newly provisioned VPS. | `bash`, `hf-mount tooling`, `systemd` |
+
+
+
+
+**Component Architecture:**
+
+```mermaid
+graph TD
+    C0[deploy]
+    C1[vps-setup.sh]
+    C0 --> C1
+```
+
+### 🏗️ Architecture
+
+Script-driven orchestration for provisioning a VPS and configuring systemd-managed services; deployment is procedural (Bash) and uses systemd for service management.
+
+### 💡 Use Cases
+
+- ✦ Provision and configure a VPS to run the hf-mount tooling
+- ✦ Automate installation and registration of systemd service units for hf-mount
+- ✦ Provide repeatable, documented deployment steps for operators or automation systems
+
+
+
+### 🔧 Technologies
+
+![bash: ](https://img.shields.io/badge/bash--blue) ![hf-mount tooling: ](https://img.shields.io/badge/hf--mount_tooling--blue) ![systemd: ](https://img.shields.io/badge/systemd--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-This directory contains operational documentation and an index of deployment-level assets used to provision and configure a VPS with the project's hf-mount tooling. At the top level there are no files; the primary actionable content lives inside the deploy/ subdirectory. The deploy/ subdirectory hosts deployment helpers and scripts; specifically, it contains a Bash script (vps-setup.sh) that performs installation steps and configures systemd services required to run hf-mount.
+### [deploy](./deploy/README.md)
+Contains deployment helpers and scripts for provisioning a VPS, installing the hf-mount tooling, and configuring related systemd services.
 
-Together, the contents of this directory serve as the authoritative location for deployment procedures: the root _docs directory provides orientation and links into deploy/, while deploy/ provides the concrete automation and service configuration needed on a target VPS. This structure keeps operational scripts separated from application source code and centralizes the deployment-focused artifacts so operators and maintainers can quickly find and run provisioning steps and understand how systemd services are expected to be configured for hf-mount tooling.
 
-
-### File Organization
-
-There are no root files; all deployment-related artifacts are grouped in a single subdirectory (deploy/) so that provisioning scripts and systemd configuration live together. This hierarchy emphasizes separation between documentation/indexing at _docs and executable deployment helpers in deploy/.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 deploy](./deploy/README.md)
-
-**Purpose:** Contains deployment helpers and scripts for provisioning a VPS, installing the hf-mount tooling, and configuring related systemd services (rooted by vps-setup.sh).
+This directory hosts deployment-level assets used to provision and configure a VPS with the project's hf-mount tooling.
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## Dependencies
 
-### External Dependencies
+## 📊 Documentation Statistics
 
-| Dependency | Usage |
-| --- | --- |
-| `systemd` | Target system service manager used by the deployment scripts to install and configure services that run the hf-mount tooling. |
-| `hf-mount tooling` | The application/software being provisioned and installed by the deployment helpers; the scripts install and configure this tooling on the VPS. |
-
-## Architecture Notes
-
-- Deployment artifacts are isolated in deploy/ to separate operational concerns from application source code.
-- The provisioning flow is driven by a single entry-point script (vps-setup.sh) that encapsulates installation and systemd service configuration to simplify reproducible VPS setup.
+- **Files Documented**: 1
+- **Directories**: 2
+- **Coverage**: 100%
+- **Last Updated**: 2026-08-07
 
 ---
 
-## Navigation
+## 🧭 How to Navigate
 
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [deploy](./deploy/README.md)
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
 
 ---
 
-*Generated by Woden Docbot*
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for hf-mount*
