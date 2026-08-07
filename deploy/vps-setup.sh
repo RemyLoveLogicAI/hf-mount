@@ -116,6 +116,14 @@ repo_to_name() {
     echo "${1//\//-}"
 }
 
+# Validate repo format to prevent injection into systemd unit files
+validate_repo() {
+    local repo="$1"
+    if [[ ! "$repo" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+        die "Invalid repo format: '$repo' (expected 'owner/name' with alphanumeric, dash, underscore, dot)"
+    fi
+}
+
 # Build mount options string for a backend binary
 build_mount_options() {
     local opts=()
@@ -525,8 +533,10 @@ create_systemd_service() {
 
     log "Creating systemd service: $service_name"
 
+    validate_repo "$repo"
+
     local opts
-    opts=$(build_mount_options "$backend")
+    opts=$(build_mount_options)
 
     local backend_bin="hf-mount-${backend}"
 
@@ -537,21 +547,25 @@ create_systemd_service() {
         svc_group="root"
     fi
 
+    # NFS requires root because hf-mount-nfs invokes mount.nfs directly
+    # (which requires CAP_SYS_ADMIN). Running as root avoids the need for
+    # a configured NOPASSWD sudo rule.
+
     cat > "$service_file" <<EOF
 [Unit]
-Description=hf-mount ${backend} mount for ${repo}
+Description=hf-mount '${backend}' mount for '${repo}'
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=${svc_user}
-Group=${svc_group}
-Environment=HOME=${STATE_DIR}
-Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
-ExecStartPre=/bin/mkdir -p ${mount_point}
-ExecStartPre=/bin/chown ${HF_MOUNT_USER}:${HF_MOUNT_GROUP} ${mount_point}
-ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts}
+User='${svc_user}'
+Group='${svc_group}'
+Environment=HOME='${STATE_DIR}'
+Environment=HF_TOKEN_FILE='${TOKEN_DIR}/hf-token'
+ExecStartPre=/bin/mkdir -p '${mount_point}'
+ExecStartPre=/bin/chown '${HF_MOUNT_USER}':'${HF_MOUNT_GROUP}' '${mount_point}'
+ExecStart='${INSTALL_DIR}/${backend_bin}' repo '${repo}' '${mount_point}' ${opts}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
 Restart=on-failure
@@ -575,6 +589,7 @@ pre_mount_repos() {
     log "Pre-mounting default repositories..."
 
     for repo in $DEFAULT_REPOS; do
+        validate_repo "$repo"
         local name
         name=$(repo_to_name "$repo")
         local mount_point="$MOUNT_BASE_DIR/$name"
@@ -866,22 +881,31 @@ main() {
         svc_group="root"
     fi
 
+    # NFS requires root because hf-mount-nfs invokes mount.nfs directly
+    # (which requires CAP_SYS_ADMIN). Running as root avoids the need for
+    # a configured NOPASSWD sudo rule.
+
+    local opts_str=""
+    for opt in "${opts[@]}"; do
+        opts_str+=" '${opt}'"
+    done
+
     # Create systemd service
     cat > "$SERVICE_DIR/$service" <<EOF
 [Unit]
-Description=hf-mount ${backend} mount for ${repo}
+Description=hf-mount '${backend}' mount for '${repo}'
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=${svc_user}
-Group=${svc_group}
-Environment=HOME=${STATE_DIR}
-Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
-ExecStartPre=/bin/mkdir -p ${mount_point}
-ExecStartPre=/bin/chown ${HF_MOUNT_USER}:${HF_MOUNT_GROUP} ${mount_point}
-ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts[*]}
+User='${svc_user}'
+Group='${svc_group}'
+Environment=HOME='${STATE_DIR}'
+Environment=HF_TOKEN_FILE='${TOKEN_DIR}/hf-token'
+ExecStartPre=/bin/mkdir -p '${mount_point}'
+ExecStartPre=/bin/chown '${HF_MOUNT_USER}':'${HF_MOUNT_GROUP}' '${mount_point}'
+ExecStart='${INSTALL_DIR}/${backend_bin}' repo '${repo}' '${mount_point}'${opts_str}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
 Restart=on-failure
