@@ -329,7 +329,8 @@ install_hf_mount() {
             die "$INSTALL_DIR/$bin not found after installation"
         fi
         # Track newly installed binaries for safe rollback
-        if [[ ! " ${preexisting[*]} " =~ " $INSTALL_DIR/$bin " ]]; then
+        local _pattern=" ${INSTALL_DIR}/${bin} "
+        if [[ ! " ${preexisting[*]} " =~ $_pattern ]]; then
             INSTALLED_BINS+=("$INSTALL_DIR/$bin")
         fi
     done
@@ -617,12 +618,12 @@ create_vps_model_mount() {
 
     local helper_path="$INSTALL_DIR/vps-model-mount"
 
-    cat > "$helper_path" <<HELPER_EOF
+    cat > "$helper_path" <<'HELPER_EOF'
 #!/usr/bin/env bash
 # vps-model-mount — Quickly mount a HuggingFace model repo on VPS
 set -euo pipefail
 
-SERVICE_DIR="/etc/systemd/system"
+SERVICE_DIR="__SERVICE_DIR__"
 INSTALL_DIR="__INSTALL_DIR__"
 MOUNT_BASE_DIR="__MOUNT_BASE_DIR__"
 CACHE_DIR="__CACHE_DIR__"
@@ -923,6 +924,7 @@ main "$@"
 HELPER_EOF
 
     sed -i \
+        -e "s|__SERVICE_DIR__|${SERVICE_DIR}|g" \
         -e "s|__INSTALL_DIR__|${INSTALL_DIR}|g" \
         -e "s|__MOUNT_BASE_DIR__|${MOUNT_BASE_DIR}|g" \
         -e "s|__CACHE_DIR__|${CACHE_DIR}|g" \
