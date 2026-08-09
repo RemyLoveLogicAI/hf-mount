@@ -1,89 +1,100 @@
-<details><summary>Directory Metadata (for smart change detection)</summary>
+# 📚 hf-mount Documentation
 
-```json
-{
-  "doc_type": "directory_index",
-  "directory_path": "_docs",
-  "directory_hash": "89d38ef465f111a7ecda85d7d717a03b4f2817c67b0e6741afffeb2fc705f013",
-  "file_count": 1,
-  "file_hashes": {
-    "DEPENDENCIES": "98b32db56d27e691"
-  }
-}
-```
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
 
-</details>
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 2](https://img.shields.io/badge/Files_Documented-2-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-08-09](https://img.shields.io/badge/Last_Updated-2026--08--09-gray)
 
-[Documentation Home](README.md)
+## 🔗 Quick Links
+
+[📂 deploy](./deploy/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Repository-level documentation and deployment-related notes and assets for setting up and deploying the application.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> Provision and deploy the hf-mount application to a VPS using a centralized, idempotent Bash setup script.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [All Files](#all-files)
-- [Dependencies](#dependencies)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+hf-mount centralizes server-side deployment automation for hosting the application on a virtual private server (VPS). The repository provides deployment assets and a single authoritative entry point, vps-setup.sh, which encodes the sequence of shell commands and configuration steps required to bring a fresh VPS to a deployable state.
+
+The project separates provisioning concerns from application source code by keeping all server setup logic in the deploy directory. That deploy artifact is intended to be idempotent and executable on a new VPS to perform provisioning, configuration, and deployment tasks using Bash/shell commands.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **deploy** | Holds the deployment automation for preparing and configuring a VPS. The root vps-setup.sh is the primary entry point that runs the sequence of shell commands and idempotent operations to provision a server and deploy the application. | `Bash`, `Shell`, `VPS (virtual private server)` |
+
+
+
+### 🏗️ Architecture
+
+Single-host, script-driven deployment: a centralized deploy directory with an idempotent Bash provisioning script (vps-setup.sh) that separates server provisioning from application source code.
+
+### 💡 Use Cases
+
+- ✦ Provision a fresh VPS and perform initial server setup to host the application.
+- ✦ Automate repeatable, idempotent server configuration and deployment steps for operators.
+- ✦ Provide a single authoritative script for maintainers to reproduce and troubleshoot VPS deployments.
+
+
+
+### 🔧 Technologies
+
+![Bash: ](https://img.shields.io/badge/Bash--blue) ![Shell: ](https://img.shields.io/badge/Shell--blue) ![VPS (virtual private server): ](https://img.shields.io/badge/VPS_(virtual_private_server)--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-This directory contains documentation-related artifacts at the repository level and a small set of deployment resources. At the root there is a single file named DEPENDENCIES. The file's presence indicates it is intended to record dependency information for the project, but no explicit purpose text was provided for the file in the repository metadata available here.
+### [deploy](./deploy/README.md)
+Contains scripts and resources used to prepare and deploy the application to a VPS; central location for server provisioning and setup automation.
 
-There is a subdirectory named deploy/ which holds deployment scripts and resources used to prepare and deploy the application to a VPS. The deploy/ directory contains a Bash script (vps-setup.sh) described as a VPS deployment script intended to perform server setup and deployment tasks required to host the application. Together, the root-level DEPENDENCIES entry and the deploy/ assets form the documentation and operational artifacts that support provisioning and configuring a virtual private server to host the application. The _docs directory therefore serves as the central location for dependency notes and the deployment automation needed to provision a server for the project.
 
-
-### File Organization
-
-The directory has a flat root with a single documentation/configuration file (DEPENDENCIES) and a dedicated subdirectory (deploy/) for deployment scripts. This keeps deployment automation separated from root-level metadata. The structure is minimal and groups related deployment assets together under deploy/ for clarity.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 deploy/](./deploy//README.md)
-
-**Purpose:** Contains scripts and resources used to prepare and deploy the application to a VPS; central location for server provisioning and setup automation.
+This directory contains deployment assets for provisioning and configuring a virtual private server (VPS).
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## 📂 All Files
 
-| File | Type |
-| --- | --- |
-| [DEPENDENCIES](./DEPENDENCIES.md) | 📄 File |
+## 📊 Documentation Statistics
 
-## Dependencies
-
-### Internal Dependencies
-
-| Dependency | Usage |
-| --- | --- |
-| `DEPENDENCIES` | Root-level file intended to list or describe required packages/resources for the project (file purpose not explicitly provided in metadata). |
-
-## Architecture Notes
-
-- Deployment automation is colocated under deploy/ to separate operational scripts from repository metadata.
-- Root-level DEPENDENCIES is kept distinct to provide a single source for dependency/reference information independent of deployment scripts.
+- **Files Documented**: 2
+- **Directories**: 2
+- **Coverage**: 100%
+- **Last Updated**: 2026-08-09
 
 ---
 
-## Navigation
+## 🧭 How to Navigate
 
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [deploy/](./deploy//README.md)
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
 
 ---
 
-*Generated by Woden Docbot*
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for hf-mount*
