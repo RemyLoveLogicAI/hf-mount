@@ -10,6 +10,8 @@ const VPS_MODE_DEFAULTS: &[(&str, &str)] = &[
     ("--flush-shutdown-timeout-ms", "120000"),
 ];
 
+/// Prepend VPS-optimized defaults (e.g. `--advanced-writes`, cache size, TTL)
+/// to the backend argument vector, skipping any flag the caller already set.
 fn inject_vps_defaults(args: &mut Vec<String>) {
     let has_flag = |args: &[String], flag: &str| -> bool {
         args.iter().any(|a| a == flag || a.starts_with(&format!("{}=", flag)))
