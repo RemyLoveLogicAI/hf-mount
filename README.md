@@ -453,40 +453,68 @@ A template unit file is also available at `deploy/hf-mount.service`.
 
 ```yaml
 services:
-  hf-mount-nfs:
+  hf-mount-fuse:
     image: hf-mount:latest
     build: .
-    container_name: hf-mount-nfs
+    container_name: hf-mount-fuse
     restart: unless-stopped
     volumes:
-      - nfs-model-data:/mnt/models
-      - nfs-hf-mount-cache:/cache
+      - fuse-model-data:/mnt/models
+      - fuse-hf-mount-cache:/cache
       - ./hf-token:/run/secrets/hf-token:ro
-    environment:
-      HF_TOKEN_FILE: /run/secrets/hf-token
-      CACHE_SIZE: "5000000000"
-      METADATA_TTL_MS: "5000"
-      POLL_INTERVAL_SECS: "10"
-      FLUSH_SHUTDOWN_TIMEOUT_MS: "120000"
+    devices:
+      - /dev/fuse
+    entrypoint: ["sh", "-c"]
     command: >
       repo openai/gpt-oss-20b /mnt/models
       --token-file /run/secrets/hf-token
       --cache-dir /cache
-      --cache-size 5000000000
-      --metadata-ttl-ms 5000
-      --poll-interval-secs 10
-      --flush-shutdown-timeout-ms 120000
-      --advanced-writes
-      --read-only
-    cap_add:
-      - SYS_ADMIN
+      --cache-size ${CACHE_SIZE}
+      --metadata-ttl-ms ${METADATA_TTL_MS}
+      --poll-interval-secs ${POLL_INTERVAL_SECS}
+      --poll-listing-concurrency ${POLL_LISTING_CONCURRENCY}
+      --cache-mode ${CACHE_MODE}
+      ${READ_ONLY:+--read-only}
+      ${ADVANCED_WRITES:+--advanced-writes}
+      ${NO_DISK_CACHE:+--no-disk-cache}
+      ${DIRECT_IO:+--direct-io}
+      --max-threads ${MAX_THREADS}
+      --flush-debounce-ms ${FLUSH_DEBOUNCE_MS}
+      --flush-max-batch-window-ms ${FLUSH_MAX_BATCH_WINDOW_MS}
+      --flush-shutdown-timeout-ms ${FLUSH_SHUTDOWN_TIMEOUT_MS}
+      --read-fetch-timeout-ms ${READ_FETCH_TIMEOUT_MS}
+      --inode-soft-limit ${INODE_SOFT_LIMIT}
+      --lru-sweep-interval-ms ${LRU_SWEEP_INTERVAL_MS}
+      ${NO_FILTER_OS_FILES:+--no-filter-os-files}
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt/models && mountpoint -q /mnt/models"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8g
+        reservations:
+          cpus: "1"
+          memory: 2g
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - no-new-privileges
 
 volumes:
-  nfs-model-data:
-  nfs-hf-mount-cache:
+  fuse-model-data:
+    driver: local
+  fuse-hf-mount-cache:
+    driver: local
 ```
 
-A full multi-service `docker-compose.yml` with NFS, FUSE, and overlay examples is at `deploy/docker-compose.yml`.
+A full multi-service `docker-compose.yml` with FUSE and overlay examples is at `deploy/docker-compose.yml`.
 
 ### VPS setup script
 
