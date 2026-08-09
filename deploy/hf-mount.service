@@ -1,5 +1,3 @@
-# Re-trigger qlty CI after addressing review feedback on PR #6.
-
 [Unit]
 Description=hf-mount {{ backend }} mount for {{ repo }}
 After=network-online.target
