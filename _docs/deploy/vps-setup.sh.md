@@ -1,4 +1,4 @@
-<!-- METADATA: {"source_path": "deploy/vps-setup.sh", "source_sha": "", "extraction_quality": "raw_source", "model": "gpt-5-mini", "generated_at": "2026-08-07T02:44:57Z", "doc_type": "file"} -->
+<!-- METADATA: {"source_path": "deploy/vps-setup.sh", "source_sha": "", "extraction_quality": "raw_source", "model": "gpt-5-mini", "generated_at": "2026-08-09T11:25:46Z", "doc_type": "file"} -->
 <details>
 <summary>Documentation Metadata (click to expand)</summary>
 
@@ -6,11 +6,11 @@
 {
   "doc_type": "file_overview",
   "file_path": "deploy/vps-setup.sh",
-  "source_hash": "f43c85d13f68ad88b9eb2e275e1017d1af92e14dcd065ad1501f9f442ee3dd8d",
-  "last_updated": "2026-08-07T02:44:57.979100+00:00",
-  "tokens_used": 3109,
+  "source_hash": "91f39e664f46ce9b46b58ccb92c2b5848613b60ead4e5c6858c2f0889e49255e",
+  "last_updated": "2026-08-09T11:25:46.837500+00:00",
+  "tokens_used": 2937,
   "complexity_score": 6,
-  "estimated_review_time_minutes": 50,
+  "estimated_review_time_minutes": 51,
   "external_dependencies": []
 }
 ```
@@ -25,7 +25,7 @@
 
 > **File:** `deploy/vps-setup.sh`
 
-![Complexity: Medium](https://img.shields.io/badge/Complexity-Medium-yellow) ![Review Time: 50min](https://img.shields.io/badge/Review_Time-50min-blue)
+![Complexity: Medium](https://img.shields.io/badge/Complexity-Medium-yellow) ![Review Time: 51min](https://img.shields.io/badge/Review_Time-51min-blue)
 
 ## 📑 Table of Contents
 
@@ -40,9 +40,7 @@
 
 ## Overview
 
-This Bash script is a VPS deployment helper for installing and configuring the hf-mount tooling and related systemd services. It defines many environment-configurable variables (install paths, user/group, cache/state/log/token directories, backend selection, and various tuning parameters), and contains procedural steps to verify prerequisites, detect an available backend (FUSE or NFS), install binaries, create a system user, write service unit files, and pre-mount a list of model repositories. The script includes utilities to build backend-specific mount options, wait for mounts to become active, and validate mounts after they are established.
-
-The file also implements a safe rollback/cleanup strategy: it registers a trap on errors to stop and remove created systemd services, remove created directories and binaries, and optionally delete the created system user. Logging and error helpers (log, die) and small helpers for human-readable sizes and repo-to-name translation support the deployment flow. Note: the provided description is based only on the available structural extraction and a truncated raw source, so some details or later steps in the script may not be captured here.
+This is a Bash VPS deployment script (deploy/vps-setup.sh) that installs and configures the hf-mount tooling and its runtime environment on a target machine. It reads many environment variables for configuration (user, install paths, cache/state/log directories, token locations, cache sizes, default repos and backend choices), creates necessary directories and a system user, installs binaries, generates systemd service units to auto-start model mounts, and provides helper behavior for adding additional mounts. The script includes backend detection (FUSE vs NFS), mounting option construction, waiting for and validating mounts, and a rollback/cleanup mechanism that reverts partial changes on error.
 
 ## Dependencies
 
@@ -54,20 +52,20 @@ This file is part of the **deploy** directory. View the [directory index](_docs/
 
 ## Architecture Notes
 
-- Bash strict mode is enabled (set -euo pipefail) and the script uses defensive error handling with a trap to run cleanup on errors.
-- Uses systemd integration concepts (creating/disabling/stopping service unit files and calling systemctl daemon-reload) as part of deployment/rollback.
-- Environment-driven configuration: many defaults are set via parameter expansion (e.g., HF_MOUNT_USER, INSTALL_DIR, CACHE_DIR, BACKEND).
-- Procedural/imperative script structure with small utility functions (log, die, human_size, repo_to_name) and focused step functions (check_root, check_prerequisites, detect_backend, etc.).
-- Extraction was performed from a truncated raw source and no structural extraction was available; the description is therefore based only on the visible portions of the script.
+- POSIX/Bash scripting with strict mode: set -euo pipefail
+- Use of a trap and cleanup function to rollback changes on error
+- Configuration via environment variables with sensible defaults
+- Procedural decomposition into small utility functions (log, die, build_mount_options, wait_for_mount, validate_mount, detect_backend, etc.)
+- Detects system package/tool availability and attempts to install missing prerequisites (apt/yum/dnf)
 - Documentation generated from raw source — no structural extractor was available for this language; descriptions may be less reliable.
 
 ## Maintenance Notes
 
-- Define and expose configurable environment variables for installing hf-mount and configuring mount/service locations and tuning parameters.
-- Check preconditions and prerequisites (root permissions and required commands like curl and jq), installing missing packages when possible.
-- Detect and honor an appropriate backend (FUSE or NFS), and prepare backend-specific mount option strings via build_mount_options.
-- Manage lifecycle of created resources with a rollback cleanup function that stops/disables systemd services, removes directories and binaries, and deletes the created user on failure.
-- Provide runtime helpers to wait for mounts to become active (wait_for_mount) and to validate that mounts are functioning (validate_mount).
+- Parse and apply deployment configuration from environment variables (paths, user, cache/state/log directories, token and backend settings).
+- Detect available backend (FUSE or NFS) and honor explicit BACKEND overrides with appropriate error messages.
+- Install hf-mount binaries, create system user and directories, generate systemd service units, and enable/start services to auto-mount configured repos.
+- Provide utility functions to build mount option strings, wait for mounts to become active, and validate that mounts are functional.
+- Implement rollback and cleanup logic (trap on ERR) to stop/disable services, remove created directories, user, and installed binaries on failure.
 
 ---
 
