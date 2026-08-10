@@ -1,56 +1,100 @@
-[Documentation Home](README.md)
+# 📚 hf-mount Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 1](https://img.shields.io/badge/Files_Documented-1-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-08-10](https://img.shields.io/badge/Last_Updated-2026--08--10-gray)
+
+## 🔗 Quick Links
+
+[📂 deploy](./deploy/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Repository-level documentation and deployment-related documentation index for developers to locate documentation assets and the deploy subdirectory contents.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> A minimal, Bash-based VPS provisioning script to automate initial server setup for application deployment.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+hf-mount provides a minimal, reproducible way to provision and configure a virtual private server prior to deploying application code. The repository's deploy directory contains a single Bash-based setup script (vps-setup.sh) and minimal resources intended to automate initial server setup and configuration tasks.
+
+The main artifact is intentionally flat and focused: a one-step VPS deployment script that operators run over SSH with root access to prepare a server environment. This script is the canonical entry point for server provisioning documented alongside the project and is aimed at developers and operators who need a repeatable VPS initialization procedure.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **deploy (vps-setup.sh)** | A single Bash-based VPS deployment script that automates initial server setup and configuration tasks. It serves as the canonical, one-step entry point to prepare a server environment before application code is deployed. | `Bash`, `SSH`, `root access` |
+
+
+
+### 🏗️ Architecture
+
+Single-script, monolithic provisioning approach: a flat deploy directory with one Bash setup script executed over SSH with root access to initialize a VPS environment.
+
+### 💡 Use Cases
+
+- ✦ Automated initial provisioning of a VPS prior to application deployment
+- ✦ Providing a reproducible, one-step server setup process for developers and operators
+- ✦ Preparing staging or production servers with a canonical, script-driven configuration
+
+
+
+### 🔧 Technologies
+
+![Bash: ](https://img.shields.io/badge/Bash--blue) ![SSH: ](https://img.shields.io/badge/SSH--blue) ![root access: ](https://img.shields.io/badge/root_access--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-The _docs directory is intended to hold documentation assets for the repository. At the root level there are no files in this directory; instead the directory primarily exposes a single subdirectory, deploy/, which contains one documented file. The absence of root-level files indicates that documentation content is organized under subdirectories rather than kept at the top level of _docs.
+### [deploy](./deploy/README.md)
+Contains scripts and resources for provisioning and configuring a VPS for deployment using a Bash-based setup script.
 
-The deploy/ subdirectory (listed as containing 1 documented file) is where deployment-related documentation is kept. Together, the _docs directory and its deploy/ subdirectory form the documentation surface that developers should consult when looking for deployment guidance and any documented artifacts related to releases or environment setup. Because root-level files are not present, navigation focuses on the deploy/ subdirectory as the entry point to documentation located here.
 
-
-### File Organization
-
-No files exist at the _docs root; documentation is organized into subdirectories. The deploy/ subdirectory contains the documented deployment file(s). This keeps deployment documentation separated from other potential documentation topics.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 deploy](./deploy/README.md)
-
-**Purpose:** Contains 1 documented file related to deployment documentation
+This directory hosts deployment artifacts for provisioning a virtual private server.
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## Architecture Notes
 
-- Documentation is stored in subdirectories rather than at the _docs root; current content is focused on deployment material in deploy/.
+## 📊 Documentation Statistics
 
----
-
-## Navigation
-
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [deploy](./deploy/README.md)
+- **Files Documented**: 1
+- **Directories**: 2
+- **Coverage**: 100%
+- **Last Updated**: 2026-08-10
 
 ---
 
-*Generated by Woden Docbot*
+## 🧭 How to Navigate
+
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
+
+---
+
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for hf-mount*
