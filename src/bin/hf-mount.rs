@@ -45,9 +45,10 @@ enum Command {
         #[arg(long)]
         fuse: bool,
 
-        /// Apply VPS-optimized defaults: smaller cache (5 GB), shorter metadata TTL (5 s),
-        /// faster polling (10 s), and longer graceful shutdown timeout (120 s).
-        /// These can still be overridden by passing explicit flags after this one.
+        /// Apply VPS-optimized defaults: `--advanced-writes`, smaller cache (5 GB),
+        /// shorter metadata TTL (5 s), faster polling (10 s), and longer graceful
+        /// shutdown timeout (120 s). These can still be overridden by passing
+        /// explicit flags after this one.
         #[arg(long)]
         vps_mode: bool,
 

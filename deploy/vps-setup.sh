@@ -826,8 +826,8 @@ main() {
         exit 0
     fi
 
-    # Check if service already exists
-    if systemctl is-enabled --quiet "$service" 2>/dev/null; then
+    # Check if service file already exists
+    if [[ -f "$SERVICE_DIR/$service" ]]; then
         echo "Service ${service} already exists, restarting..."
         systemctl restart "$service"
         wait_for_mount "$mount_point" 120

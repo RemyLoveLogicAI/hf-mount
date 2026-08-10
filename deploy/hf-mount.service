@@ -11,6 +11,7 @@ Environment=HOME={{ state_dir }}
 Environment=HF_TOKEN_FILE={{ token_dir }}/hf-token
 ExecStartPre=/bin/mkdir -p {{ mount_point }}
 ExecStartPre=/bin/chown {{ user }}:{{ group }} {{ mount_point }}
+# {{ source_type }} is either "bucket" (for HF S3 buckets) or "repo" (for HF repos)
 ExecStart={{ install_dir }}/hf-mount-{{ backend }} {{ source_type }} {{ repo }} {{ mount_point }} {{ options }}
 ExecStop=/bin/kill -SIGTERM $MAINPID
 TimeoutStopSec=180
