@@ -555,7 +555,7 @@ Environment=HOME="${STATE_DIR}"
 Environment=HF_TOKEN_FILE="${TOKEN_DIR}/hf-token"
 ExecStartPre=/bin/mkdir -p "${mount_point}"
 ExecStartPre=/bin/chown "${HF_MOUNT_USER}":"${HF_MOUNT_GROUP}" "${mount_point}"
-ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts}
+ExecStart=${INSTALL_DIR}/${backend_bin} repo "${repo}" "${mount_point}" ${opts}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
 Restart=on-failure
@@ -886,7 +886,7 @@ Environment=HOME="${STATE_DIR}"
 Environment=HF_TOKEN_FILE="${TOKEN_DIR}/hf-token"
 ExecStartPre=/bin/mkdir -p "${mount_point}"
 ExecStartPre=/bin/chown "${HF_MOUNT_USER}":"${HF_MOUNT_GROUP}" "${mount_point}"
-ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts[*]}
+ExecStart=${INSTALL_DIR}/${backend_bin} repo "${repo}" "${mount_point}" ${opts[*]}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
 Restart=on-failure
