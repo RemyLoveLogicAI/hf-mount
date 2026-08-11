@@ -95,7 +95,7 @@ cleanup() {
     exit 1
 }
 
-trap cleanup ERR
+trap cleanup ERR SIGINT SIGTERM
 
 # ─── Utility Functions ───────────────────────────────────────────────────
 
@@ -551,10 +551,10 @@ Wants=network-online.target
 Type=simple
 User=${svc_user}
 Group=${svc_group}
-Environment=HOME=${STATE_DIR}
-Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
-ExecStartPre=/bin/mkdir -p ${mount_point}
-ExecStartPre=/bin/chown ${HF_MOUNT_USER}:${HF_MOUNT_GROUP} ${mount_point}
+Environment=HOME="${STATE_DIR}"
+Environment=HF_TOKEN_FILE="${TOKEN_DIR}/hf-token"
+ExecStartPre=/bin/mkdir -p "${mount_point}"
+ExecStartPre=/bin/chown "${HF_MOUNT_USER}":"${HF_MOUNT_GROUP}" "${mount_point}"
 ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
@@ -882,10 +882,10 @@ Wants=network-online.target
 Type=simple
 User=${svc_user}
 Group=${svc_group}
-Environment=HOME=${STATE_DIR}
-Environment=HF_TOKEN_FILE=${TOKEN_DIR}/hf-token
-ExecStartPre=/bin/mkdir -p ${mount_point}
-ExecStartPre=/bin/chown ${HF_MOUNT_USER}:${HF_MOUNT_GROUP} ${mount_point}
+Environment=HOME="${STATE_DIR}"
+Environment=HF_TOKEN_FILE="${TOKEN_DIR}/hf-token"
+ExecStartPre=/bin/mkdir -p "${mount_point}"
+ExecStartPre=/bin/chown "${HF_MOUNT_USER}":"${HF_MOUNT_GROUP}" "${mount_point}"
 ExecStart=${INSTALL_DIR}/${backend_bin} repo ${repo} ${mount_point} ${opts[*]}
 ExecStop=/bin/kill -SIGTERM \$MAINPID
 TimeoutStopSec=180
