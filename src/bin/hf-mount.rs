@@ -2,6 +2,34 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+const VPS_MODE_DEFAULTS: &[(&str, &str)] = &[
+    ("--advanced-writes", ""),
+    ("--cache-size", "5000000000"),
+    ("--metadata-ttl-ms", "5000"),
+    ("--poll-interval-secs", "10"),
+    ("--flush-shutdown-timeout-ms", "120000"),
+];
+
+/// Prepend VPS-optimized defaults (e.g. `--advanced-writes`, cache size, TTL)
+/// to the backend argument vector, skipping any flag the caller already set.
+fn inject_vps_defaults(args: &mut Vec<String>) {
+    let has_flag = |args: &[String], flag: &str| -> bool {
+        args.iter().any(|a| a == flag || a.starts_with(&format!("{}=", flag)))
+    };
+
+    let mut insert_at = 0;
+    for &(flag, value) in VPS_MODE_DEFAULTS {
+        if !has_flag(args, flag) {
+            args.insert(insert_at, flag.to_string());
+            insert_at += 1;
+            if !value.is_empty() {
+                args.insert(insert_at, value.to_string());
+                insert_at += 1;
+            }
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(about = "Mount Hugging Face Buckets and repos as local filesystems", version)]
 struct Cli {
@@ -16,6 +44,13 @@ enum Command {
         /// Use FUSE backend instead of NFS (default: NFS)
         #[arg(long)]
         fuse: bool,
+
+        /// Apply VPS-optimized defaults: `--advanced-writes`, smaller cache (5 GB),
+        /// shorter metadata TTL (5 s), faster polling (10 s), and longer graceful
+        /// shutdown timeout (120 s). These can still be overridden by passing
+        /// explicit flags after this one.
+        #[arg(long)]
+        vps_mode: bool,
 
         /// Remaining arguments passed to the backend (hf-mount-nfs or hf-mount-fuse)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -52,8 +87,13 @@ fn main() {
                 }
             }
         }
-        Command::Start { fuse, args } => {
+        Command::Start { fuse, vps_mode, args } => {
             let backend = if fuse { "hf-mount-fuse" } else { "hf-mount-nfs" };
+
+            let mut args = args;
+            if vps_mode {
+                inject_vps_defaults(&mut args);
+            }
 
             // Find the backend binary next to this binary, or in PATH.
             let backend_path = std::env::current_exe()
@@ -127,4 +167,82 @@ fn exec_backend(backend: &std::path::Path, args: &[String], guard: &hf_mount::da
 
     // exec replaces the process, so this only returns on error.
     cmd.exec()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn injects_all_defaults_when_no_flags_present() {
+        let mut args = vec![
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let expected = vec![
+            "--advanced-writes",
+            "--cache-size",
+            "5000000000",
+            "--metadata-ttl-ms",
+            "5000",
+            "--poll-interval-secs",
+            "10",
+            "--flush-shutdown-timeout-ms",
+            "120000",
+            "repo",
+            "openai/gpt-oss-20b",
+            "/mnt/models",
+        ];
+        assert_eq!(args, expected);
+    }
+
+    #[test]
+    fn does_not_duplicate_explicit_flags() {
+        let mut args = vec![
+            "--cache-size".to_string(),
+            "1000000000".to_string(),
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let cache_size_count = args.iter().filter(|a| *a == "--cache-size").count();
+        assert_eq!(cache_size_count, 1);
+        let idx = args.iter().position(|a| a == "--cache-size").unwrap();
+        assert_eq!(args[idx + 1], "1000000000");
+    }
+
+    #[test]
+    fn handles_flag_equals_value_form() {
+        let mut args = vec![
+            "--cache-size=1000000000".to_string(),
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let count = args
+            .iter()
+            .filter(|a| *a == "--cache-size" || a.starts_with("--cache-size="))
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn boolean_flag_injected_without_value() {
+        let mut args = vec![
+            "repo".to_string(),
+            "openai/gpt-oss-20b".to_string(),
+            "/mnt/models".to_string(),
+        ];
+        inject_vps_defaults(&mut args);
+
+        let idx = args.iter().position(|a| a == "--advanced-writes").unwrap();
+        assert!(idx + 1 >= args.len() || args[idx + 1].starts_with('-'));
+    }
 }
